@@ -67,3 +67,11 @@ export default tseslint.config([
   },
 ])
 ```
+
+## API configuration
+
+- Set `VITE_API_URL` in a `.env` file at the project root to point to the backend API (defaults to `http://localhost:3000`). Example:
+
+```
+VITE_API_URL=http://localhost:3000
+```
