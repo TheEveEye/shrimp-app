@@ -232,18 +232,18 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
             return (
               <tr key={r.campaign_id} tabIndex={0}>
                 <td>
-                  <a className="name-link" href={`https://evemaps.dotlan.net/system/${toUnderscores(sys)}`} target="_blank" rel="noreferrer">{sys}</a>
+                  <a className="name-link" href={`https://evemaps.dotlan.net/map/${toUnderscores(reg)}/${toUnderscores(sys)}`} target="_blank" rel="noreferrer">{sys}</a>
                 </td>
                 <td>
                   {con !== '-' ? (
-                    <a className="name-link" href={`https://evemaps.dotlan.net/constellation/${toUnderscores(con)}`} target="_blank" rel="noreferrer">{con}</a>
+                    <a className="name-link" href={`https://evemaps.dotlan.net/map/${toUnderscores(reg)}/${toUnderscores(con)}`} target="_blank" rel="noreferrer">{con}</a>
                   ) : (
                     <span className="muted">-</span>
                   )}
                 </td>
                 <td>
                   {reg !== '-' ? (
-                    <a className="name-link" href={`https://evemaps.dotlan.net/region/${toUnderscores(reg)}`} target="_blank" rel="noreferrer">{reg}</a>
+                    <a className="name-link" href={`https://evemaps.dotlan.net/map/${toUnderscores(reg)}`} target="_blank" rel="noreferrer">{reg}</a>
                   ) : (
                     <span className="muted">-</span>
                   )}
