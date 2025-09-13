@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { wsClient } from '../lib/ws';
 
-
-type EnrichedCampaign = {
+export type EnrichedCampaign = {
   campaign_id: number;
   solar_system_id: number;
   start_time: string;
@@ -54,7 +54,15 @@ function formatT(ms: number) {
 type SortKey = 'out' | 'region';
 type SortDir = 'asc' | 'desc';
 
-export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s: string) => void }) {
+export default function SovCampaignsTable({
+  onUpdatedAgo,
+  rowOverlay,
+  rowClassName,
+}: {
+  onUpdatedAgo?: (s: string) => void;
+  rowOverlay?: (row: EnrichedCampaign) => ReactNode;
+  rowClassName?: (row: EnrichedCampaign) => string | undefined;
+}) {
   const [snapshot, setSnapshot] = useState<Snapshot>({ timestamp: 0, isStale: false, campaigns: [] });
   const [connected, setConnected] = useState(false);
   const [now, setNow] = useState<number>(Date.now());
@@ -302,8 +310,9 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
             const defender_remaining = defPct <= 60
               ? DEFENDERS_TOTAL + incBelow
               : Math.max(DEFENDERS_TOTAL - incAbove, 0);
+            const trClass = rowClassName ? rowClassName(r) : undefined;
             return (
-              <tr key={r.campaign_id} tabIndex={0}>
+              <tr key={r.campaign_id} tabIndex={0} className={trClass}>
                 <td>
                   <a className="name-link" href={`https://evemaps.dotlan.net/map/${toUnderscores(reg)}/${toUnderscores(sys)}`} target="_blank" rel="noreferrer">{sys}</a>
                 </td>
@@ -346,6 +355,11 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
                       <div className="fill" style={{ width: `${defPct}%` }} />
                     </div>
                   </div>
+                  {rowOverlay ? (
+                    <div className="row-actions">
+                      {rowOverlay(r)}
+                    </div>
+                  ) : null}
                 </td>
               </tr>
             );

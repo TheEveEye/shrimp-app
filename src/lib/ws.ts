@@ -11,7 +11,16 @@ type ServerMessage =
   | { type: 'pong'; requestId?: string }
   | { type: 'campaigns.snapshot'; topic: 'public.campaigns'; version: number; data: any[]; isStale: boolean; ts: string }
   | { type: 'campaigns.diff'; topic: 'public.campaigns'; since: number; version: number; ts: string; isStale: boolean; added: any[]; updated: Array<{ campaign_id: number; changes: any }>; removed: number[] }
-  | { type: 'campaigns.resync'; topic: 'public.campaigns' };
+  | { type: 'campaigns.resync'; topic: 'public.campaigns' }
+  // Session messages (lobby)
+  | { type: 'session.snapshot'; topic: string; members: Array<{ character_id: number; name?: string; role: 'coordinator' | 'line'; online: boolean }>; meta: { id: number; owner_id: number; created_at: number; ended_at?: number; campaigns: number[] } }
+  | { type: 'presence.joined'; topic: string; character_id: number }
+  | { type: 'presence.left'; topic: string; character_id: number }
+  | { type: 'presence.heartbeat'; topic: string; ts: number }
+  | { type: 'member.kicked'; topic: string; character_id: number }
+  | { type: 'codes.rotated'; topic: string; role: 'coordinator' | 'line'; rotated_at: number }
+  | { type: 'session.ended'; topic: string }
+  | { type: 'session.forced_leave' };
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
