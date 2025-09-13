@@ -55,18 +55,27 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const intervalRef = useRef<number | null>(null);
   const lastAnnounceRef = useRef<number>(0);
+  const localVersionRef = useRef<number>(0);
+  const rowsByIdRef = useRef<Map<number, EnrichedCampaign>>(new Map());
+  const pendingCatchupRef = useRef<boolean>(false);
 
   useEffect(() => {
     // Connect shared WS and subscribe to public campaigns
     const off = wsClient.addMessageHandler((msg) => {
       if (msg.type === 'campaigns.snapshot') {
+        // Replace entirely
+        localVersionRef.current = msg.version;
+        const byId = new Map<number, EnrichedCampaign>();
+        for (const row of (msg.data as any[])) byId.set((row as any).campaign_id, row as any);
+        rowsByIdRef.current = byId;
         const data: Snapshot = {
           timestamp: new Date(msg.ts).getTime(),
           isStale: msg.isStale,
-          campaigns: msg.data as any,
+          campaigns: Array.from(byId.values()),
         };
         setSnapshot(data);
         setConnected(true);
+        pendingCatchupRef.current = false;
         const nowTs = Date.now();
         if (nowTs - lastAnnounceRef.current > 5000) {
           const live = document.getElementById('live-updates');
@@ -77,10 +86,41 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
             if (el) el.textContent = '';
           }, 500);
         }
+      } else if (msg.type === 'campaigns.diff') {
+        const local = localVersionRef.current;
+        if (msg.since !== local) {
+          // Request catch-up or wait for resync
+          if (!pendingCatchupRef.current) {
+            pendingCatchupRef.current = true;
+            wsClient.catchupCampaigns(local);
+          }
+          return;
+        }
+        // Apply diff
+        const byId = rowsByIdRef.current;
+        // removals
+        for (const id of msg.removed) byId.delete(id);
+        // additions
+        for (const row of msg.added as any[]) byId.set((row as any).campaign_id, row as any);
+        // updates
+        for (const upd of msg.updated) {
+          const cur = byId.get(upd.campaign_id);
+          if (cur) Object.assign(cur, upd.changes);
+        }
+        localVersionRef.current = msg.version;
+        const data: Snapshot = {
+          timestamp: new Date(msg.ts).getTime(),
+          isStale: msg.isStale,
+          campaigns: Array.from(byId.values()),
+        };
+        setSnapshot(data);
+      } else if (msg.type === 'campaigns.resync') {
+        // Wait for fresh snapshot that follows
+        pendingCatchupRef.current = false;
       }
     });
     wsClient.ensure();
-    wsClient.subscribe('public.campaigns');
+    wsClient.subscribe('public.campaigns', { lastVersion: localVersionRef.current });
     intervalRef.current = window.setInterval(() => setNow(Date.now()), 1000);
     return () => {
       wsClient.unsubscribe('public.campaigns');
@@ -110,7 +150,7 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
     if (s < 2) return 'updated just now';
     if (s < 60) return `updated ${s}s ago`;
     const m = Math.floor(s / 60);
-    return `updated ${m}m ago`;
+    return `Last changed ${m}m ago`;
   })();
 
   // Report updated text to page header

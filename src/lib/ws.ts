@@ -1,14 +1,17 @@
 type Message =
   | { type: 'auth'; token?: string; requestId?: string }
-  | { type: 'subscribe'; topic: string; requestId?: string }
+  | { type: 'subscribe'; topic: string; lastVersion?: number; requestId?: string }
   | { type: 'unsubscribe'; topic: string; requestId?: string }
-  | { type: 'ping'; requestId?: string };
+  | { type: 'ping'; requestId?: string }
+  | { type: 'campaigns.catchup'; topic: 'public.campaigns'; since: number; requestId?: string };
 
 type ServerMessage =
   | { type: 'ack'; requestId?: string }
   | { type: 'error'; requestId?: string; code: string; message?: string }
   | { type: 'pong'; requestId?: string }
-  | { type: 'campaigns.snapshot'; data: any[]; isStale: boolean; ts: string };
+  | { type: 'campaigns.snapshot'; topic: 'public.campaigns'; version: number; data: any[]; isStale: boolean; ts: string }
+  | { type: 'campaigns.diff'; topic: 'public.campaigns'; since: number; version: number; ts: string; isStale: boolean; added: any[]; updated: Array<{ campaign_id: number; changes: any }>; removed: number[] }
+  | { type: 'campaigns.resync'; topic: 'public.campaigns' };
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
@@ -104,9 +107,9 @@ class WSClient {
     this.send({ type: 'auth', token });
   }
 
-  subscribe(topic: string) {
+  subscribe(topic: string, opts?: { lastVersion?: number }) {
     this.wantedSubs.add(topic);
-    this.send({ type: 'subscribe', topic });
+    this.send({ type: 'subscribe', topic, lastVersion: opts?.lastVersion });
   }
 
   unsubscribe(topic: string) {
@@ -117,6 +120,10 @@ class WSClient {
   addMessageHandler(cb: (msg: ServerMessage) => void) {
     this.handlers.add(cb);
     return () => this.handlers.delete(cb);
+  }
+
+  catchupCampaigns(since: number) {
+    this.send({ type: 'campaigns.catchup', topic: 'public.campaigns', since });
   }
 }
 
