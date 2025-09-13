@@ -41,11 +41,7 @@ function formatT(ms: number) {
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  if (totalSeconds < 3600) {
-    // < 1h -> mm:ss
-    return `T${sign}${pad(minutes)}:${pad(seconds)}`;
-    
-  } else if (totalSeconds < 86400) {
+  if (totalSeconds < 86400) {
     // < 1d -> hh:mm:ss
     const hh = Math.floor(totalSeconds / 3600);
     return `T${sign}${pad(hh)}:${pad(minutes)}:${pad(seconds)}`;
@@ -64,6 +60,7 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
   const [now, setNow] = useState<number>(Date.now());
   const [sortKey, setSortKey] = useState<SortKey>('out');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [showRelative, setShowRelative] = useState(false);
   const intervalRef = useRef<number | null>(null);
   const lastAnnounceRef = useRef<number>(0);
   const localVersionRef = useRef<number>(0);
@@ -156,11 +153,21 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
 
   const updatedAgo = (() => {
     if (!snapshot?.timestamp) return '';
-    const d = new Date(snapshot.timestamp);
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    const ss = String(d.getSeconds()).padStart(2, '0');
-    return `Last change ${hh}:${mm}:${ss}`;
+    if (!showRelative) {
+      const d = new Date(snapshot.timestamp);
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
+      return `Last change ${hh}:${mm}:${ss}`;
+    }
+    const ms = Math.max(now - snapshot.timestamp, 0);
+    const s = Math.floor(ms / 1000);
+    if (s < 2) return 'Last change just now';
+    if (s < 60) return `Last change ${s}s ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `Last change ${m}min ago`;
+    const h = Math.floor(m / 60);
+    return `Last change ${h}h ago`;
   })();
 
   // Report updated text to page header
@@ -219,7 +226,15 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
         <div className="panel-header">
           <div className="panel-title">Current campaigns</div>
           <div className="controls">
-            <span className="muted">{updatedAgo}</span>
+            <button
+              type="button"
+              className="muted text-button"
+              onClick={() => setShowRelative((v) => !v)}
+              style={{ whiteSpace: 'nowrap' }}
+              title="Toggle last change display"
+            >
+              {updatedAgo}
+            </button>
             {snapshot.isStale && <span className="badge warn">STALE</span>}
           </div>
         </div>
@@ -236,7 +251,15 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
       <div className="panel-header">
         <div className="panel-title">Current campaigns</div>
         <div className="controls">
-          <span className="muted">{updatedAgo}</span>
+          <button
+            type="button"
+            className="muted text-button"
+            onClick={() => setShowRelative((v) => !v)}
+            style={{ whiteSpace: 'nowrap' }}
+            title="Toggle last change display"
+          >
+            {updatedAgo}
+          </button>
           {snapshot.isStale && <span className="badge warn">STALE</span>}
         </div>
       </div>
