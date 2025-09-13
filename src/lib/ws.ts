@@ -1,0 +1,123 @@
+type Message =
+  | { type: 'auth'; token?: string; requestId?: string }
+  | { type: 'subscribe'; topic: string; requestId?: string }
+  | { type: 'unsubscribe'; topic: string; requestId?: string }
+  | { type: 'ping'; requestId?: string };
+
+type ServerMessage =
+  | { type: 'ack'; requestId?: string }
+  | { type: 'error'; requestId?: string; code: string; message?: string }
+  | { type: 'pong'; requestId?: string }
+  | { type: 'campaigns.snapshot'; data: any[]; isStale: boolean; ts: string };
+
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+
+function toWsUrl(httpUrl: string): string {
+  const u = new URL(httpUrl);
+  u.pathname = (u.pathname.endsWith('/') ? u.pathname.slice(0, -1) : u.pathname) + '/ws';
+  u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+  return u.toString();
+}
+
+function jitter(ms: number): number {
+  const spread = ms * 0.3;
+  return ms + (Math.random() * spread - spread / 2);
+}
+
+class WSClient {
+  private url: string;
+  private ws: WebSocket | null = null;
+  private reconnectAttempts = 0;
+  private maxBackoff = 30000; // 30s
+  private baseBackoff = 500; // ms
+  private queue: Message[] = [];
+  private handlers: Set<(msg: ServerMessage) => void> = new Set();
+  private wantedSubs: Set<string> = new Set();
+  connected = false;
+
+  constructor(url: string) {
+    this.url = url;
+  }
+
+  ensure() {
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
+    this.connect();
+  }
+
+  private connect() {
+    try {
+      this.ws = new WebSocket(this.url);
+    } catch (e) {
+      this.scheduleReconnect();
+      return;
+    }
+    const ws = this.ws;
+    ws.onopen = () => {
+      this.connected = true;
+      this.reconnectAttempts = 0;
+      // Flush queue
+      const q = this.queue;
+      this.queue = [];
+      for (const m of q) this.send(m);
+      // Resubscribe topics
+      for (const t of this.wantedSubs) this.send({ type: 'subscribe', topic: t });
+    };
+    ws.onclose = () => {
+      this.connected = false;
+      this.scheduleReconnect();
+    };
+    ws.onerror = () => {
+      // handled by onclose
+    };
+    ws.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data) as ServerMessage;
+        for (const h of this.handlers) h(msg);
+      } catch {
+        // ignore
+      }
+    };
+  }
+
+  private scheduleReconnect() {
+    const attempt = this.reconnectAttempts++;
+    const backoff = Math.min(this.maxBackoff, this.baseBackoff * Math.pow(2, attempt));
+    const delay = Math.max(250, jitter(backoff));
+    setTimeout(() => this.connect(), delay);
+  }
+
+  private send(msg: Message) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      this.queue.push(msg);
+      this.ensure();
+      return;
+    }
+    try {
+      this.ws.send(JSON.stringify(msg));
+    } catch (e) {
+      // requeue on transient error
+      this.queue.push(msg);
+    }
+  }
+
+  auth(token: string) {
+    this.send({ type: 'auth', token });
+  }
+
+  subscribe(topic: string) {
+    this.wantedSubs.add(topic);
+    this.send({ type: 'subscribe', topic });
+  }
+
+  unsubscribe(topic: string) {
+    this.wantedSubs.delete(topic);
+    this.send({ type: 'unsubscribe', topic });
+  }
+
+  addMessageHandler(cb: (msg: ServerMessage) => void) {
+    this.handlers.add(cb);
+    return () => this.handlers.delete(cb);
+  }
+}
+
+export const wsClient = new WSClient(toWsUrl(API_BASE));

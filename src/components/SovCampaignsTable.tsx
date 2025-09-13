@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { wsClient } from '../lib/ws';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 type EnrichedCampaign = {
   campaign_id: number;
@@ -53,16 +53,18 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
   const [now, setNow] = useState<number>(Date.now());
   const [sortKey, setSortKey] = useState<SortKey>('out');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const esRef = useRef<EventSource | null>(null);
   const intervalRef = useRef<number | null>(null);
   const lastAnnounceRef = useRef<number>(0);
 
   useEffect(() => {
-    const es = new EventSource(`${API_BASE}/events/campaigns`, { withCredentials: false });
-    esRef.current = es;
-    es.onmessage = (evt) => {
-      try {
-        const data = JSON.parse(evt.data) as Snapshot;
+    // Connect shared WS and subscribe to public campaigns
+    const off = wsClient.addMessageHandler((msg) => {
+      if (msg.type === 'campaigns.snapshot') {
+        const data: Snapshot = {
+          timestamp: new Date(msg.ts).getTime(),
+          isStale: msg.isStale,
+          campaigns: msg.data as any,
+        };
         setSnapshot(data);
         setConnected(true);
         const nowTs = Date.now();
@@ -75,16 +77,14 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
             if (el) el.textContent = '';
           }, 500);
         }
-      } catch (e) {
-        // ignore malformed
       }
-    };
-    es.onerror = () => {
-      // Let EventSource handle reconnects automatically
-    };
+    });
+    wsClient.ensure();
+    wsClient.subscribe('public.campaigns');
     intervalRef.current = window.setInterval(() => setNow(Date.now()), 1000);
     return () => {
-      es.close();
+      wsClient.unsubscribe('public.campaigns');
+      off();
       if (intervalRef.current) window.clearInterval(intervalRef.current);
     };
   }, []);
