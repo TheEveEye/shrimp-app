@@ -104,7 +104,7 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 .owner .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-.eta-pill { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--chip-bg); }
+.eta-pill { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--chip-bg); white-space: nowrap; }
 .eta-pill.warn { border-color: var(--warning); }
 .eta-pill.live { color: var(--danger); border-color: var(--danger); }
 

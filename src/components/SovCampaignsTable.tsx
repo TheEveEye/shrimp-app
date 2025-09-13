@@ -32,16 +32,27 @@ function toUnderscores(name?: string) {
   return (name ?? '').replace(/\s+/g, '_');
 }
 
-function formatETA(ms: number, opts?: { abs?: boolean }) {
-  const val = opts?.abs ? Math.abs(ms) : ms;
-  if (val <= 0) return '0:00:00:00';
-  const totalSeconds = Math.floor(val / 1000);
+function formatT(ms: number) {
+  const sign = ms > 0 ? '-' : '+'; // T- if in future, T+ if passed
+  const absMs = Math.abs(ms);
+  const totalSeconds = Math.floor(absMs / 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
   const days = Math.floor(totalSeconds / 86400);
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${days}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  if (totalSeconds < 3600) {
+    // < 1h -> mm:ss
+    return `T${sign}${pad(minutes)}:${pad(seconds)}`;
+    
+  } else if (totalSeconds < 86400) {
+    // < 1d -> hh:mm:ss
+    const hh = Math.floor(totalSeconds / 3600);
+    return `T${sign}${pad(hh)}:${pad(minutes)}:${pad(seconds)}`;
+  } else {
+    // >= 1d -> d:hh:mm:ss
+    return `T${sign}${days}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  }
 }
 
 type SortKey = 'out' | 'region';
@@ -145,12 +156,11 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
 
   const updatedAgo = (() => {
     if (!snapshot?.timestamp) return '';
-    const ms = Math.max(now - snapshot.timestamp, 0);
-    const s = Math.floor(ms / 1000);
-    if (s < 2) return 'Changed just now';
-    if (s < 60) return `Last changed ${s}s ago`;
-    const m = Math.floor(s / 60);
-    return `Last changed ${m}m ago`;
+    const d = new Date(snapshot.timestamp);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `Last change ${hh}:${mm}:${ss}`;
   })();
 
   // Report updated text to page header
@@ -247,7 +257,7 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
           {rows.map((r) => {
             const etaMs = new Date(r.out_time_raw).getTime() - now;
             const isLive = etaMs <= 0; // out time passed but campaign still present
-            const eta = isLive ? formatETA(etaMs, { abs: true }) : formatETA(etaMs);
+            const eta = formatT(etaMs);
             const sys = r.system_name ?? String(r.solar_system_id);
             const con = r.constellation_name ?? '-';
             const reg = r.region_name ?? '-';
