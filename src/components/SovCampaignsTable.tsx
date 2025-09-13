@@ -147,8 +147,8 @@ export default function SovCampaignsTable({ onUpdatedAgo }: { onUpdatedAgo?: (s:
     if (!snapshot?.timestamp) return '';
     const ms = Math.max(now - snapshot.timestamp, 0);
     const s = Math.floor(ms / 1000);
-    if (s < 2) return 'updated just now';
-    if (s < 60) return `updated ${s}s ago`;
+    if (s < 2) return 'Changed just now';
+    if (s < 60) return `Last changed ${s}s ago`;
     const m = Math.floor(s / 60);
     return `Last changed ${m}m ago`;
   })();
