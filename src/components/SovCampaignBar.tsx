@@ -68,7 +68,6 @@ export default React.memo(function SovCampaignBar({ row, now, isStale }: { row: 
 
   return (
     <section className={`camp-card${isStale ? ' stale' : ''}`} aria-label={ariaLabel}>
-      {isStale && <span className="badge warn stale-chip">STALE</span>}
       <div className="camp-strip-wrap">
         <div className="camp-strip" aria-hidden="true">
           {segs.map((t, idx) => (
@@ -99,6 +98,7 @@ export default React.memo(function SovCampaignBar({ row, now, isStale }: { row: 
           <div className="camp-center mono">
             <span className="camp-eta">{eta}</span>
             <span className="camp-score"><span className="score-def">{defender_remaining}</span>/<span className="score-att">{attacker_remaining}</span></span>
+            {isStale ? <span className="badge warn stale-badge">STALE</span> : null}
           </div>
         </div>
       </div>
