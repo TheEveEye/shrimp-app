@@ -161,6 +161,11 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     setActiveSessions(rows)
   }, [isAuthenticated, authedFetch])
 
+  // After authenticating (or token refresh), refresh sessions list
+  useEffect(() => {
+    if (isAuthenticated) void fetchActiveSessions()
+  }, [isAuthenticated, fetchActiveSessions])
+
   const openLobby = useCallback(async (id: number) => {
     if (!isAuthenticated || !accessRef.current) throw new Error('unauthenticated')
     // Fetch snapshot first

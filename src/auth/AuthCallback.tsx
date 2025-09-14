@@ -69,7 +69,9 @@ export default function AuthCallback() {
         persistTokens(json.access_token, json.id_token, json.expires_in)
         clearPkce()
         // Full reload to let AuthProvider bootstrap from sessionStorage
-        window.location.replace('/')
+        const returnTo = sessionStorage.getItem('shrimp.returnTo') || '/'
+        sessionStorage.removeItem('shrimp.returnTo')
+        window.location.replace(returnTo)
       } catch (e: any) {
         setError(e?.message || 'Token exchange failed')
         // Keep PKCE cleared to force a fresh login
