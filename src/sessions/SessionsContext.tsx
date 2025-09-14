@@ -51,12 +51,31 @@ type Ctx = {
 const SessionsContext = createContext<Ctx | undefined>(undefined)
 
 export function SessionsProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, accessToken, character } = useAuth()
+  const { isAuthenticated, accessToken, character, refresh } = useAuth()
   const [lobby, setLobby] = useState<Lobby>({ members: [], connected: false })
   const [activeSessions, setActiveSessions] = useState<ActiveSessionTile[]>([])
   const topicRef = useRef<string | null>(null)
   // no-op placeholder for future cleanup
   const { toast } = useToast()
+  const accessRef = useRef<string | undefined>(accessToken)
+  useEffect(() => { accessRef.current = accessToken }, [accessToken])
+
+  // Wrapper to add Authorization and retry once on 401 after refresh
+  const authedFetch = useCallback(async (url: string, init?: RequestInit, allowRetry = true): Promise<Response> => {
+    const headers = new Headers(init?.headers as any)
+    const tok = accessRef.current
+    if (tok) headers.set('Authorization', `Bearer ${tok}`)
+    const res = await fetch(url, { ...init, headers })
+    if (res.status === 401 && allowRetry) {
+      const ok = await refresh()
+      if (!ok) return res
+      const headers2 = new Headers(init?.headers as any)
+      const t2 = accessRef.current
+      if (t2) headers2.set('Authorization', `Bearer ${t2}`)
+      return await fetch(url, { ...init, headers: headers2 })
+    }
+    return res
+  }, [refresh])
 
   // Wire auth token to WS when available
   useEffect(() => {
@@ -89,9 +108,9 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
         else {
           // unknown member joined; refetch snapshot
           const sid = topicRef.current ? Number.parseInt(topicRef.current.split('.')[1] || '', 10) : undefined
-          if (sid && accessToken) {
-            fetch(`${API_BASE}/v1/sessions/${sid}`, { headers: { Authorization: `Bearer ${accessToken}` } })
-              .then(r => r.ok ? r.json() : null)
+          if (sid && accessRef.current) {
+            authedFetch(`${API_BASE}/v1/sessions/${sid}`)
+              .then(r => r && r.ok ? r.json() : null)
               .then(json => { if (json) setLobby((l) => ({ ...l, members: json.members || [], coordinator_code: json.coordinator_code || l.coordinator_code, line_code: json.line_code || l.line_code })) })
               .catch(() => {})
           }
@@ -133,21 +152,22 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
   }, [character])
 
   const fetchActiveSessions = useCallback(async () => {
-    if (!isAuthenticated || !accessToken) return setActiveSessions([])
-    const res = await fetch(`${API_BASE}/v1/me/sessions?status=active`, { headers: { Authorization: `Bearer ${accessToken}` } })
+    if (!isAuthenticated || !accessRef.current) return setActiveSessions([])
+    const res = await authedFetch(`${API_BASE}/v1/me/sessions?status=active`)
     if (!res.ok) return setActiveSessions([])
     const json = await res.json()
     const rows = (json.sessions || []) as Array<{ id: number; created_at: number; owner_id: number }>
     // We don't know role from this endpoint; fetch later via lobby open
     setActiveSessions(rows)
-  }, [isAuthenticated, accessToken])
+  }, [isAuthenticated, authedFetch])
 
   const openLobby = useCallback(async (id: number) => {
-    if (!isAuthenticated || !accessToken) throw new Error('unauthenticated')
+    if (!isAuthenticated || !accessRef.current) throw new Error('unauthenticated')
     // Fetch snapshot first
-    const res = await fetch(`${API_BASE}/v1/sessions/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+    const res = await authedFetch(`${API_BASE}/v1/sessions/${id}`)
     if (res.status === 410) throw new Error('ended')
     if (res.status === 403) throw new Error('forbidden')
+    if (res.status === 404) throw new Error('not_found')
     if (!res.ok) throw new Error('failed')
     const json = await res.json()
     const my = character ? (json.members || []).find((m: any) => m.character_id === character.id)?.role : undefined
@@ -156,7 +176,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     const topic = `session.${id}`
     topicRef.current = topic
     wsClient.subscribe(topic)
-  }, [isAuthenticated, accessToken, character])
+  }, [isAuthenticated, character, authedFetch])
 
   const closeLobby = useCallback(() => {
     if (topicRef.current) wsClient.unsubscribe(topicRef.current)
@@ -165,31 +185,31 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const createSession = useCallback(async (items: Array<{ campaign_id: number; side: 'offense' | 'defense' }>) => {
-    if (!accessToken) throw new Error('unauthenticated')
-    const res = await fetch(`${API_BASE}/v1/sessions`, {
+    if (!accessRef.current) throw new Error('unauthenticated')
+    const res = await authedFetch(`${API_BASE}/v1/sessions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ campaigns: items }),
     })
     if (!res.ok) throw new Error('create_failed')
     const json = await res.json()
     setLobby((l) => ({ ...l, sessionId: json.session?.id, created_at: json.session?.created_at, owner_id: json.session?.owner_id, campaigns: json.session?.campaigns, coordinator_code: json.coordinator_code, line_code: json.line_code }))
     return { id: json.session.id as number, coordinator_code: json.coordinator_code as string, line_code: json.line_code as string }
-  }, [accessToken])
+  }, [authedFetch])
 
   const joinWithCode = useCallback(async (code: string) => {
-    if (!accessToken) throw new Error('unauthenticated')
+    if (!accessRef.current) throw new Error('unauthenticated')
     // Parse id from code: expect "<id>-XXXX"
     const m = code.trim().match(/^(\d+)-/)
     let id: number | null = m ? Number.parseInt(m[1], 10) : null
     let res: Response
     if (id) {
-      res = await fetch(`${API_BASE}/v1/sessions/${id}/join`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ code })
+      res = await authedFetch(`${API_BASE}/v1/sessions/${id}/join`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code })
       })
     } else {
-      res = await fetch(`${API_BASE}/v1/sessions/join`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ code })
+      res = await authedFetch(`${API_BASE}/v1/sessions/join`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code })
       })
     }
     if (res.status === 400) throw new Error('invalid')
@@ -201,35 +221,35 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     const role: Role = json.role
     setLobby((l) => ({ ...l, sessionId: id || undefined }))
     return { id: id!, role }
-  }, [accessToken])
+  }, [authedFetch])
 
   const rotateCode = useCallback(async (role: Role) => {
-    if (!accessToken || !lobby.sessionId) throw new Error('unauthenticated')
-    const res = await fetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/codes/rotate`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ role }) })
+    if (!accessRef.current || !lobby.sessionId) throw new Error('unauthenticated')
+    const res = await authedFetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/codes/rotate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) })
     if (res.status === 403) throw new Error('forbidden')
     if (res.status === 410) throw new Error('ended')
     if (!res.ok) throw new Error('failed')
     const json = await res.json()
     setLobby((l) => ({ ...l, coordinator_code: role === 'coordinator' ? json.code : l.coordinator_code, line_code: role === 'line' ? json.code : l.line_code }))
     return json.code as string
-  }, [accessToken, lobby.sessionId])
+  }, [authedFetch, lobby.sessionId])
 
   const kick = useCallback(async (character_id: number) => {
-    if (!accessToken || !lobby.sessionId) throw new Error('unauthenticated')
-    const res = await fetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/kick`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ character_id }) })
+    if (!accessRef.current || !lobby.sessionId) throw new Error('unauthenticated')
+    const res = await authedFetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/kick`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character_id }) })
     if (res.status === 403) throw new Error('forbidden')
     if (!res.ok) throw new Error('failed')
-  }, [accessToken, lobby.sessionId])
+  }, [authedFetch, lobby.sessionId])
 
   const kickMember = useCallback(async (sessionId: number, character_id: number) => {
-    if (!accessToken) throw new Error('unauthenticated')
+    if (!accessRef.current) throw new Error('unauthenticated')
     const before = membersRef.current
     const victim = before.find(m => m.character_id === character_id)
     // optimistic remove
     setLobby((l) => ({ ...l, members: l.members.filter(m => m.character_id !== character_id) }))
     try {
-      const res = await fetch(`${API_BASE}/v1/sessions/${sessionId}/kick`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ character_id })
+      const res = await authedFetch(`${API_BASE}/v1/sessions/${sessionId}/kick`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character_id })
       })
       if (res.status === 403) { toast("You don't have permission for that action.", 'error'); throw new Error('forbidden') }
       if (res.status === 410) { toast('Session has ended.', 'warn'); throw new Error('ended') }
@@ -240,34 +260,34 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
       setLobby((l) => ({ ...l, members: before }))
       throw e
     }
-  }, [accessToken, toast])
+  }, [authedFetch, toast])
 
   const endSession = useCallback(async () => {
-    if (!accessToken || !lobby.sessionId) throw new Error('unauthenticated')
-    const res = await fetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/end`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } })
+    if (!accessRef.current || !lobby.sessionId) throw new Error('unauthenticated')
+    const res = await authedFetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/end`, { method: 'POST' })
     if (res.status === 403) throw new Error('forbidden')
     if (!res.ok) throw new Error('failed')
-  }, [accessToken, lobby.sessionId])
+  }, [authedFetch, lobby.sessionId])
 
   const setRole = useCallback(async (character_id: number, role: Role) => {
-    if (!accessToken || !lobby.sessionId) throw new Error('unauthenticated')
-    const res = await fetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/role`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ character_id, role })
+    if (!accessRef.current || !lobby.sessionId) throw new Error('unauthenticated')
+    const res = await authedFetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/role`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character_id, role })
     })
     if (res.status === 403) throw new Error('forbidden')
     if (!res.ok) throw new Error('failed')
     // Optimistic update (WS will also update everyone)
     setLobby((l) => ({ ...l, members: l.members.map(m => m.character_id === character_id ? { ...m, role } : m) }))
-  }, [accessToken, lobby.sessionId])
+  }, [authedFetch, lobby.sessionId])
 
   const setMemberRole = useCallback(async (sessionId: number, character_id: number, role: Role) => {
-    if (!accessToken) throw new Error('unauthenticated')
+    if (!accessRef.current) throw new Error('unauthenticated')
     const before = membersRef.current.map(m => ({ ...m }))
     const u = before.find(m => m.character_id === character_id)
     setLobby((l) => ({ ...l, members: l.members.map(m => m.character_id === character_id ? { ...m, role } : m) }))
     try {
-      const res = await fetch(`${API_BASE}/v1/sessions/${sessionId}/role`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ character_id, role })
+      const res = await authedFetch(`${API_BASE}/v1/sessions/${sessionId}/role`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character_id, role })
       })
       if (res.status === 403) { toast("You don't have permission for that action.", 'error'); throw new Error('forbidden') }
       if (res.status === 410) { toast('Session has ended.', 'warn'); throw new Error('ended') }
@@ -277,7 +297,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
       setLobby((l) => ({ ...l, members: before }))
       throw e
     }
-  }, [accessToken, toast])
+  }, [authedFetch, toast])
 
   const value = useMemo<Ctx>(() => ({
     lobby,

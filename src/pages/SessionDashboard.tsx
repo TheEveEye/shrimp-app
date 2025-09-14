@@ -5,6 +5,7 @@ import { wsClient } from '../lib/ws'
 import SovCampaignBar from '../components/SovCampaignBar'
 import MembersSidebar from '../components/MembersSidebar'
 import type { EnrichedCampaign } from '../components/SovCampaignsTable'
+import { useAuth } from '../auth/AuthContext'
 
 type Snapshot = {
   timestamp: number
@@ -16,16 +17,28 @@ export default function SessionDashboard() {
   const { id } = useParams()
   const nav = useNavigate()
   const { lobby, openLobby } = useSessions()
+  const { isReady, isAuthenticated } = useAuth()
 
   // Open the session WS (presence + metadata)
   useEffect(() => {
     const sid = Number(id)
     if (!Number.isFinite(sid)) return
-    openLobby(sid).catch(() => {
-      const t = setTimeout(() => nav('/'), 300)
-      return () => clearTimeout(t)
-    })
-  }, [id, openLobby, nav])
+    if (!isReady || !isAuthenticated) return
+    let retryTimer: number | null = null
+    const tryOpen = () => {
+      openLobby(sid).catch((err: any) => {
+        const code = err?.message || ''
+        if (code === 'forbidden' || code === 'ended' || code === 'not_found') {
+          nav('/')
+        } else {
+          // transient failure; retry shortly
+          retryTimer = window.setTimeout(tryOpen, 800)
+        }
+      })
+    }
+    tryOpen()
+    return () => { if (retryTimer) window.clearTimeout(retryTimer) }
+  }, [id, openLobby, nav, isReady, isAuthenticated])
 
   // Public campaigns subscription (shared WS client)
   const [snapshot, setSnapshot] = useState<Snapshot>({ timestamp: 0, isStale: false, byId: new Map() })

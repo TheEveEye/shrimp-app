@@ -4,10 +4,8 @@ import { clearPkce, persistTokens, popPkceState } from './AuthContext'
 
 type TokenResponse = {
   access_token: string
-  token_type: string
   expires_in: number
   id_token?: string
-  refresh_token?: string
 }
 
 export default function AuthCallback() {
@@ -33,31 +31,18 @@ export default function AuthCallback() {
         return
       }
 
-      const ISSUER = import.meta.env.VITE_EVE_SSO_ISSUER || 'https://login.eveonline.com/v2'
-      const CLIENT_ID = import.meta.env.VITE_EVE_CLIENT_ID
-      if (!CLIENT_ID) {
-        setError('EVE SSO is not configured. Missing client id.')
-        clearPkce()
-        return
-      }
+      const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
       try {
-        const body = new URLSearchParams()
-        body.set('grant_type', 'authorization_code')
-        body.set('client_id', CLIENT_ID)
-        body.set('code', code)
-        body.set('code_verifier', verifier)
         const REDIRECT_URI = import.meta.env.VITE_EVE_REDIRECT_URI
-        if (REDIRECT_URI) body.set('redirect_uri', REDIRECT_URI)
-
-        const res = await fetch(`${ISSUER}/oauth/token`, {
+        const res = await fetch(`${API_BASE}/api/auth/exchange`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
             'Accept': 'application/json',
           },
-          body: body.toString(),
-          // Note: Assuming CORS is permitted. If blocked, add a minimal server proxy later.
+          body: JSON.stringify({ code, code_verifier: verifier, redirect_uri: REDIRECT_URI }),
+          credentials: 'include',
         })
 
         const contentType = res.headers.get('content-type') || ''
@@ -78,7 +63,7 @@ export default function AuthCallback() {
           if (import.meta.env.DEV) console.error('EVE SSO token response:', json)
           throw new Error(message)
         }
-        if (import.meta.env.DEV) console.log('EVE SSO token response:', json)
+        if (import.meta.env.DEV) console.log('Auth exchange response:', json)
 
         // Store tokens (sessionStorage) and redirect. id_token may be absent if 'openid' was not included.
         persistTokens(json.access_token, json.id_token, json.expires_in)
