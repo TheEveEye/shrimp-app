@@ -36,7 +36,7 @@ export default function SessionsNew() {
       setCreating(true)
       const items = Array.from(selected.entries()).map(([campaign_id, side]) => ({ campaign_id, side }))
       const created = await createSession(items)
-      nav(`/sessions/${created.id}/lobby`, { state: { codes: { coordinator: created.coordinator_code, line: created.line_code } } })
+      nav(`/sessions/${created.id}/dashboard`, { state: { codes: { coordinator: created.coordinator_code, line: created.line_code } } })
       toast(`Session created with ${counts.off} offensive / ${counts.def} defensive campaigns`)
     } finally {
       setCreating(false)

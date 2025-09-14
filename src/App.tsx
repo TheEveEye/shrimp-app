@@ -6,7 +6,7 @@ import NavBar from './components/NavBar'
 import RequireAuth from './pages/RequireAuth'
 import SessionsNew from './pages/SessionsNew'
 import SessionsJoin from './pages/SessionsJoin'
-import SessionLobby from './pages/SessionLobby'
+import SessionDashboard from './pages/SessionDashboard'
 import LoginPage from './pages/LoginPage'
 import { useAuth } from './auth/AuthContext'
 import { useEffect } from 'react'
@@ -19,19 +19,13 @@ function Home() {
   useEffect(() => { if (isAuthenticated) fetchActiveSessions() }, [isAuthenticated, fetchActiveSessions])
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1 className="title">Sovereignty Campaigns</h1>
-          <p className="subtitle">Live Sovereignty Hub timers streamed from ESI</p>
-        </div>
-      </header>
-      {isAuthenticated && activeSessions.length > 0 ? (
+    {isAuthenticated && activeSessions.length > 0 ? (
         <div className="panel" role="region" aria-label="Active Sessions" style={{ marginBottom: 16 }}>
           <div className="panel-header"><div className="panel-title">Active Sessions</div></div>
           <div className="panel-body" style={{ overflowX: 'auto' }}>
             <div style={{ display: 'flex', gap: 12 }}>
               {activeSessions.map(s => (
-                <button key={s.id} className="chip" onClick={() => nav(`/sessions/${s.id}/lobby`)}>
+                <button key={s.id} className="chip" onClick={() => nav(`/sessions/${s.id}/dashboard`)}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ fontWeight: 600 }}>Session #{s.id}</div>
                     {s.role ? <span className={`badge ${s.role === 'coordinator' ? 'ok' : ''}`}>{s.role}</span> : null}
@@ -43,6 +37,13 @@ function Home() {
           </div>
         </div>
       ) : null}
+      <header className="page-header">
+        <div>
+          <h1 className="title">Sovereignty Campaigns</h1>
+          <p className="subtitle">Live Sovereignty Hub timers streamed from ESI</p>
+        </div>
+      </header>
+      
       <SovCampaignsTable />
     </>
   )
@@ -58,7 +59,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/sessions/new" element={<RequireAuth><SessionsNew /></RequireAuth>} />
           <Route path="/sessions/join" element={<RequireAuth><SessionsJoin /></RequireAuth>} />
-          <Route path="/sessions/:id/lobby" element={<RequireAuth><SessionLobby /></RequireAuth>} />
+          <Route path="/sessions/:id/dashboard" element={<RequireAuth><SessionDashboard /></RequireAuth>} />
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
       </main>

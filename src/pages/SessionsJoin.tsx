@@ -15,7 +15,7 @@ export default function SessionsJoin() {
     setLoading(true)
     try {
       const { id } = await joinWithCode(code)
-      nav(`/sessions/${id}/lobby`)
+      nav(`/sessions/${id}/dashboard`)
     } catch (e: any) {
       const msg = e?.message
       if (msg === 'invalid') setError('Invalid join code.')
@@ -43,4 +43,3 @@ export default function SessionsJoin() {
     </div>
   )
 }
-
