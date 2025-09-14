@@ -198,6 +198,13 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 .session-card .left { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .session-card .right { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .session-label { font-size: 13px; font-weight: 700; white-space: nowrap; }
+
+/* ADM display */
+.adm-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--chip-bg); }
+.sov-table thead th.col-adm, .sov-table tbody td.col-adm { white-space: nowrap; }
+@media (max-width: 900px) {
+  .sov-table thead th.col-adm, .sov-table tbody td.col-adm { display: none; }
+}
 .creator-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 200px; min-width: 0; }
 .creator-name { display: inline-block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text); }
 .summary-text { color: var(--text-muted); font-size: 12px; overflow: visible; text-overflow: clip; white-space: nowrap; line-height: 1.35; flex: 0 0 auto; }

@@ -20,6 +20,8 @@ export type EnrichedCampaign = {
   out_time_utc: string;
   out_time_raw: string;
   def_pct?: number;
+  adm?: number;
+  adm_observed_at?: string;
 };
 
 type Snapshot = {
@@ -51,7 +53,7 @@ function formatT(ms: number) {
   }
 }
 
-type SortKey = 'out' | 'region';
+type SortKey = 'time' | 'region' | 'adm';
 type SortDir = 'asc' | 'desc';
 
 export default function SovCampaignsTable({
@@ -66,7 +68,7 @@ export default function SovCampaignsTable({
   const [snapshot, setSnapshot] = useState<Snapshot>({ timestamp: 0, isStale: false, campaigns: [] });
   const [connected, setConnected] = useState(false);
   const [now, setNow] = useState<number>(Date.now());
-  const [sortKey, setSortKey] = useState<SortKey>('out');
+  const [sortKey, setSortKey] = useState<SortKey>('time');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [showRelative, setShowRelative] = useState(false);
   const intervalRef = useRef<number | null>(null);
@@ -149,10 +151,14 @@ export default function SovCampaignsTable({
     const arr = [...(snapshot?.campaigns ?? [])];
     arr.sort((a, b) => {
       let cmp = 0;
-      if (sortKey === 'out') {
+      if (sortKey === 'time') {
         cmp = new Date(a.out_time_raw).getTime() - new Date(b.out_time_raw).getTime();
       } else if (sortKey === 'region') {
         cmp = (a.region_name || '').localeCompare(b.region_name || '');
+      } else if (sortKey === 'adm') {
+        const av = Number.isFinite(a.adm as number) ? (a.adm as number) : -Infinity;
+        const bv = Number.isFinite(b.adm as number) ? (b.adm as number) : -Infinity;
+        cmp = av - bv;
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -203,6 +209,7 @@ export default function SovCampaignsTable({
                 <th scope="col">Constellation</th>
                 <th scope="col">Region</th>
                 <th scope="col">Owner</th>
+                <th scope="col" className="col-adm">ADM</th>
                 <th scope="col">Time</th>
                 <th scope="col">Relative</th>
                 <th scope="col">Score</th>
@@ -215,6 +222,7 @@ export default function SovCampaignsTable({
                   <td><div className="skeleton" style={{ height: 14, width: 160 }} /></td>
                   <td><div className="skeleton" style={{ height: 14, width: 140 }} /></td>
                   <td><div className="skeleton" style={{ height: 18, width: 220 }} /></td>
+                  <td className="col-adm"><div className="skeleton" style={{ height: 22, width: 86, borderRadius: 9999 }} /></td>
                   <td><div className="skeleton" style={{ height: 14, width: 160 }} /></td>
                   <td><div className="skeleton" style={{ height: 22, width: 120, borderRadius: 9999 }} /></td>
                   <td><div className="skeleton" style={{ height: 14, width: 120 }} /></td>
@@ -279,7 +287,8 @@ export default function SovCampaignsTable({
             <th scope="col">Constellation</th>
             <th scope="col" role="button" tabIndex={0} onClick={() => { setSortKey('region'); setSortDir(sortKey==='region' && sortDir==='asc' ? 'desc' : 'asc'); }} aria-sort={sortKey==='region'? (sortDir==='asc'?'ascending':'descending') : 'none'}>Region {sortKey==='region' ? (sortDir==='asc'?'▲':'▼') : ''}</th>
             <th scope="col">Owner</th>
-            <th scope="col" role="button" tabIndex={0} onClick={() => { setSortKey('out'); setSortDir(sortKey==='out' && sortDir==='asc' ? 'desc' : 'asc'); }} aria-sort={sortKey==='out'? (sortDir==='asc'?'ascending':'descending') : 'none'} title="Sort by Time">Time {sortKey==='out' ? (sortDir==='asc'?'▲':'▼') : ''}</th>
+            <th scope="col" className="col-adm" role="button" tabIndex={0} onClick={() => { setSortKey('adm'); setSortDir(sortKey==='adm' && sortDir==='asc' ? 'desc' : 'asc'); }} aria-sort={sortKey==='adm'? (sortDir==='asc'?'ascending':'descending') : 'none'} title="Sort by ADM">ADM {sortKey==='adm' ? (sortDir==='asc'?'▲':'▼') : ''}</th>
+            <th scope="col" role="button" tabIndex={0} onClick={() => { setSortKey('time'); setSortDir(sortKey==='time' && sortDir==='asc' ? 'desc' : 'asc'); }} aria-sort={sortKey==='time'? (sortDir==='asc'?'ascending':'descending') : 'none'} title="Sort by Time">Time {sortKey==='time' ? (sortDir==='asc'?'▲':'▼') : ''}</th>
             <th scope="col">Relative</th>
             <th scope="col">Score</th>
           </tr>
@@ -337,6 +346,13 @@ export default function SovCampaignsTable({
                     )}
                     <span className="name">{ownerName}</span>
                   </div>
+                </td>
+                <td className="col-adm">
+                  {Number.isFinite(r.adm as number) ? (
+                    <span className="adm-pill mono">{(r.adm as number).toFixed(1)}×</span>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
                 </td>
                 <td className="mono">{r.out_time_utc}</td>
                 <td>
