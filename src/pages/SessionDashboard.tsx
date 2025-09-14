@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSessions } from '../sessions/SessionsContext'
 import { wsClient } from '../lib/ws'
 import SovCampaignBar from '../components/SovCampaignBar'
+import MembersSidebar from '../components/MembersSidebar'
 import type { EnrichedCampaign } from '../components/SovCampaignsTable'
 
 type Snapshot = {
@@ -77,14 +78,23 @@ export default function SessionDashboard() {
     }
   }, [])
 
+  // Redirect to home if I am forced to leave (e.g., kicked)
+  useEffect(() => {
+    const remove = wsClient.addMessageHandler((msg: any) => {
+      if (msg?.type === 'session.forced_leave') {
+        nav('/')
+      }
+    })
+    return () => { remove() }
+  }, [nav])
+
   const selectedIds = useMemo(() => (lobby.campaigns || []).map((c) => c.campaign_id), [lobby.campaigns])
   const selectedRows = useMemo(() => selectedIds.map((id) => snapshot.byId.get(id)), [selectedIds, snapshot])
 
   return (
     <div className="dashboard">
-      {/* CampaignBars section */}
-      {selectedIds.length > 0 ? (
-          // <div className="panel-body" style={{ padding: 12 }}>
+        {/* CampaignBars section */}
+        {selectedIds.length > 0 ? (
             <div className="camp-list">
               {/* Skeletons while waiting for first snapshot */}
               {(!connected && selectedIds.length > 0 && snapshot.byId.size === 0) ? (
@@ -100,18 +110,11 @@ export default function SessionDashboard() {
                 )
               ))}
             </div>
-          // </div>
-      ) : null}
+        ) : null}
 
-      {/* Placeholders for future sections */}
+        {/* Placeholders for future sections */}
       <div className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header"><div className="panel-title">Active Nodes</div></div>
-        <div className="panel-body" style={{ padding: 20 }}>
-          <div className="muted">Coming soon</div>
-        </div>
-      </div>
-      <div className="panel" style={{ marginTop: 16 }}>
-        <div className="panel-header"><div className="panel-title">Members</div></div>
         <div className="panel-body" style={{ padding: 20 }}>
           <div className="muted">Coming soon</div>
         </div>
@@ -122,7 +125,7 @@ export default function SessionDashboard() {
           <div className="muted">Coming soon</div>
         </div>
       </div>
+      <MembersSidebar />
     </div>
   )
 }
-

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSessions } from '../sessions/SessionsContext'
 import { useToast } from '../components/ToastProvider'
+import Icon from '../components/Icon'
 import SovCampaignsTable from '../components/SovCampaignsTable'
 import type { EnrichedCampaign } from '../components/SovCampaignsTable'
 
@@ -72,7 +73,7 @@ export default function SessionsNew() {
                     aria-pressed={picked === 'offense'}
                     onClick={() => setSide(row.campaign_id, 'offense')}
                   >
-                    <img src="/sword.filled.png" alt="" className="glyph sword" />
+                    <Icon name="sword" size={20} className="glyph sword" alt="" />
                   </button>
                   <button
                     type="button"
@@ -81,7 +82,7 @@ export default function SessionsNew() {
                     aria-pressed={picked === 'defense'}
                     onClick={() => setSide(row.campaign_id, 'defense')}
                   >
-                    <span className="glyph shield" aria-hidden="true" />
+                    <Icon name="shield" kind="mask" size={20} className="glyph shield" alt="" />
                   </button>
                 </>
               )

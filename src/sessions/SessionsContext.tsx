@@ -7,7 +7,16 @@ const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 type Role = 'coordinator' | 'line'
 
-type Member = { character_id: number; name?: string; role: Role; online: boolean }
+type Member = {
+  character_id: number
+  name?: string
+  role: Role
+  online: boolean
+  portrait_url?: string | null
+  alliance_id?: number | null
+  alliance_name?: string | null
+  alliance_icon_url?: string | null
+}
 
 type Lobby = {
   sessionId?: number
@@ -33,7 +42,10 @@ type Ctx = {
   joinWithCode: (code: string) => Promise<{ id: number; role: Role }>
   rotateCode: (role: Role) => Promise<string>
   kick: (character_id: number) => Promise<void>
+  kickMember: (sessionId: number, character_id: number) => Promise<void>
   endSession: () => Promise<void>
+  setRole: (character_id: number, role: Role) => Promise<void>
+  setMemberRole: (sessionId: number, character_id: number, role: Role) => Promise<void>
 }
 
 const SessionsContext = createContext<Ctx | undefined>(undefined)
@@ -58,6 +70,8 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const off = wsClient.addMessageHandler((raw: any) => {
       if (raw?.type === 'session.snapshot') {
+        // Determine my role from snapshot
+        const my = character ? (raw.members || []).find((m: any) => m.character_id === character.id)?.role : undefined
         setLobby((l) => ({
           ...l,
           sessionId: raw.meta?.id,
@@ -65,6 +79,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
           created_at: raw.meta?.created_at,
           owner_id: raw.meta?.owner_id,
           campaigns: raw.meta?.campaigns,
+          myRole: my,
           connected: true,
         }))
       } else if (raw?.type === 'presence.joined') {
@@ -77,7 +92,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
           if (sid && accessToken) {
             fetch(`${API_BASE}/v1/sessions/${sid}`, { headers: { Authorization: `Bearer ${accessToken}` } })
               .then(r => r.ok ? r.json() : null)
-              .then(json => { if (json) setLobby((l) => ({ ...l, members: json.members || [] })) })
+              .then(json => { if (json) setLobby((l) => ({ ...l, members: json.members || [], coordinator_code: json.coordinator_code || l.coordinator_code, line_code: json.line_code || l.line_code })) })
               .catch(() => {})
           }
         }
@@ -99,6 +114,8 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
           if (u) toast(`${u.name || 'Member'} was kicked`, 'warn')
           setLobby((l) => ({ ...l, members: l.members.filter(m => m.character_id !== raw.character_id) }))
         }
+      } else if (raw?.type === 'member.role_updated' || raw?.type === 'member.role_changed') {
+        setLobby((l) => ({ ...l, members: l.members.map(m => m.character_id === raw.character_id ? { ...m, role: raw.role } : m) }))
       } else if (raw?.type === 'session.ended') {
         toast('Session ended', 'warn')
         if (topicRef.current) wsClient.unsubscribe(topicRef.current)
@@ -133,12 +150,13 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     if (res.status === 403) throw new Error('forbidden')
     if (!res.ok) throw new Error('failed')
     const json = await res.json()
-    setLobby((l) => ({ ...l, sessionId: id, members: json.members || [], created_at: json.session?.created_at, owner_id: json.session?.owner_id, campaigns: json.session?.campaigns }))
+    const my = character ? (json.members || []).find((m: any) => m.character_id === character.id)?.role : undefined
+    setLobby((l) => ({ ...l, sessionId: id, members: json.members || [], created_at: json.session?.created_at, owner_id: json.session?.owner_id, campaigns: json.session?.campaigns, coordinator_code: json.coordinator_code, line_code: json.line_code, myRole: my }))
     // Subscribe WS
     const topic = `session.${id}`
     topicRef.current = topic
     wsClient.subscribe(topic)
-  }, [isAuthenticated, accessToken])
+  }, [isAuthenticated, accessToken, character])
 
   const closeLobby = useCallback(() => {
     if (topicRef.current) wsClient.unsubscribe(topicRef.current)
@@ -203,12 +221,63 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     if (!res.ok) throw new Error('failed')
   }, [accessToken, lobby.sessionId])
 
+  const kickMember = useCallback(async (sessionId: number, character_id: number) => {
+    if (!accessToken) throw new Error('unauthenticated')
+    const before = membersRef.current
+    const victim = before.find(m => m.character_id === character_id)
+    // optimistic remove
+    setLobby((l) => ({ ...l, members: l.members.filter(m => m.character_id !== character_id) }))
+    try {
+      const res = await fetch(`${API_BASE}/v1/sessions/${sessionId}/kick`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ character_id })
+      })
+      if (res.status === 403) { toast("You don't have permission for that action.", 'error'); throw new Error('forbidden') }
+      if (res.status === 410) { toast('Session has ended.', 'warn'); throw new Error('ended') }
+      if (!res.ok) { toast('Failed to kick member.', 'error'); throw new Error('failed') }
+      if (victim) toast(`Kicked ${victim.name || 'member'}`)
+    } catch (e) {
+      // rollback
+      setLobby((l) => ({ ...l, members: before }))
+      throw e
+    }
+  }, [accessToken, toast])
+
   const endSession = useCallback(async () => {
     if (!accessToken || !lobby.sessionId) throw new Error('unauthenticated')
     const res = await fetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/end`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } })
     if (res.status === 403) throw new Error('forbidden')
     if (!res.ok) throw new Error('failed')
   }, [accessToken, lobby.sessionId])
+
+  const setRole = useCallback(async (character_id: number, role: Role) => {
+    if (!accessToken || !lobby.sessionId) throw new Error('unauthenticated')
+    const res = await fetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/role`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ character_id, role })
+    })
+    if (res.status === 403) throw new Error('forbidden')
+    if (!res.ok) throw new Error('failed')
+    // Optimistic update (WS will also update everyone)
+    setLobby((l) => ({ ...l, members: l.members.map(m => m.character_id === character_id ? { ...m, role } : m) }))
+  }, [accessToken, lobby.sessionId])
+
+  const setMemberRole = useCallback(async (sessionId: number, character_id: number, role: Role) => {
+    if (!accessToken) throw new Error('unauthenticated')
+    const before = membersRef.current.map(m => ({ ...m }))
+    const u = before.find(m => m.character_id === character_id)
+    setLobby((l) => ({ ...l, members: l.members.map(m => m.character_id === character_id ? { ...m, role } : m) }))
+    try {
+      const res = await fetch(`${API_BASE}/v1/sessions/${sessionId}/role`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ character_id, role })
+      })
+      if (res.status === 403) { toast("You don't have permission for that action.", 'error'); throw new Error('forbidden') }
+      if (res.status === 410) { toast('Session has ended.', 'warn'); throw new Error('ended') }
+      if (!res.ok) { toast('Failed to change role.', 'error'); throw new Error('failed') }
+      if (u) toast(`Made ${u.name || 'member'} a ${role}`)
+    } catch (e) {
+      setLobby((l) => ({ ...l, members: before }))
+      throw e
+    }
+  }, [accessToken, toast])
 
   const value = useMemo<Ctx>(() => ({
     lobby,
@@ -220,8 +289,11 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     joinWithCode,
     rotateCode,
     kick,
+    kickMember,
     endSession,
-  }), [lobby, activeSessions, fetchActiveSessions, openLobby, closeLobby, createSession, joinWithCode, rotateCode, kick, endSession])
+    setRole,
+    setMemberRole,
+  }), [lobby, activeSessions, fetchActiveSessions, openLobby, closeLobby, createSession, joinWithCode, rotateCode, kick, kickMember, endSession, setRole, setMemberRole])
 
   return (
     <SessionsContext.Provider value={value}>{children}</SessionsContext.Provider>
