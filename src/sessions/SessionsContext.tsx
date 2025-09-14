@@ -30,11 +30,15 @@ type Lobby = {
   connected: boolean
 }
 
-type ActiveSessionTile = { id: number; created_at: number; owner_id: number; role?: Role }
+type ActiveSessionCampaign = { campaign_id: number; side: 'offense' | 'defense'; system_name?: string; region_name?: string; constellation_id?: number; constellation_name?: string }
+type ActiveSessionCreator = { character_id: number; name?: string; portrait_url?: string | null }
+type ActiveSessionSummary = { offensive: number; defensive: number; constellations: number }
+type ActiveSessionTile = { id: number; created_at: number; owner_id: number; role?: Role; creator?: ActiveSessionCreator; campaigns?: ActiveSessionCampaign[]; summary?: ActiveSessionSummary; connected?: number }
 
 type Ctx = {
   lobby: Lobby
   activeSessions: ActiveSessionTile[]
+  activeSessionsLoading: boolean
   fetchActiveSessions: () => Promise<void>
   openLobby: (id: number) => Promise<void>
   closeLobby: () => void
@@ -54,6 +58,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, accessToken, character, refresh } = useAuth()
   const [lobby, setLobby] = useState<Lobby>({ members: [], connected: false })
   const [activeSessions, setActiveSessions] = useState<ActiveSessionTile[]>([])
+  const [activeSessionsLoading, setActiveSessionsLoading] = useState<boolean>(false)
   const topicRef = useRef<string | null>(null)
   // no-op placeholder for future cleanup
   const { toast } = useToast()
@@ -152,13 +157,17 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
   }, [character])
 
   const fetchActiveSessions = useCallback(async () => {
-    if (!isAuthenticated || !accessRef.current) return setActiveSessions([])
-    const res = await authedFetch(`${API_BASE}/v1/me/sessions?status=active`)
-    if (!res.ok) return setActiveSessions([])
-    const json = await res.json()
-    const rows = (json.sessions || []) as Array<{ id: number; created_at: number; owner_id: number }>
-    // We don't know role from this endpoint; fetch later via lobby open
-    setActiveSessions(rows)
+    if (!isAuthenticated || !accessRef.current) { setActiveSessions([]); return }
+    setActiveSessionsLoading(true)
+    try {
+      const res = await authedFetch(`${API_BASE}/v1/me/sessions?status=active`)
+      if (!res.ok) { setActiveSessions([]); return }
+      const json = await res.json()
+      const rows = (json.sessions || []) as ActiveSessionTile[]
+      setActiveSessions(rows)
+    } finally {
+      setActiveSessionsLoading(false)
+    }
   }, [isAuthenticated, authedFetch])
 
   // After authenticating (or token refresh), refresh sessions list
@@ -307,6 +316,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<Ctx>(() => ({
     lobby,
     activeSessions,
+    activeSessionsLoading,
     fetchActiveSessions,
     openLobby,
     closeLobby,
@@ -318,7 +328,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     endSession,
     setRole,
     setMemberRole,
-  }), [lobby, activeSessions, fetchActiveSessions, openLobby, closeLobby, createSession, joinWithCode, rotateCode, kick, kickMember, endSession, setRole, setMemberRole])
+  }), [lobby, activeSessions, activeSessionsLoading, fetchActiveSessions, openLobby, closeLobby, createSession, joinWithCode, rotateCode, kick, kickMember, endSession, setRole, setMemberRole])
 
   return (
     <SessionsContext.Provider value={value}>{children}</SessionsContext.Provider>
