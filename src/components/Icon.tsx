@@ -1,4 +1,4 @@
-type IconName = 'signOut' | 'sidebarRight' | 'rotate' | 'copy' | 'sword' | 'shield' | 'kick' | 'promote' | 'manageCharacters'
+type IconName = 'signOut' | 'sidebarRight' | 'rotate' | 'copy' | 'sword' | 'shield' | 'kick' | 'promote' | 'manageCharacters' | 'unlink'
 
 const ICONS: Record<IconName, { src?: string; mask?: string }> = {
   // Public assets mapped to semantic names
@@ -10,7 +10,8 @@ const ICONS: Record<IconName, { src?: string; mask?: string }> = {
   shield: { mask: '/shield.lefthalf.filled.svg' },
   kick: { mask: '/person.fill.badge.minus.svg' },
   promote: { mask: '/arrow.up.circle.svg' },
-  manageCharacters: { mask: '/person.2.badge.gearshape.fill.svg' }
+  manageCharacters: { mask: '/person.2.badge.gearshape.fill.svg' },
+  unlink: { mask: '/minus.circle.fill.svg' },
 }
 
 type Props = {

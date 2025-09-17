@@ -24,6 +24,17 @@ export default function AuthCallback() {
         return
       }
 
+      // Link flow: if state begins with "link:", this callback is for popup character linking.
+      // Hand off to server which holds PKCE verifier and stores refresh tokens server-side.
+      if (state.startsWith('link:')) {
+        const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+        const url = new URL(`${API_BASE}/api/auth/link/callback`)
+        if (code) url.searchParams.set('code', code)
+        url.searchParams.set('state', state)
+        window.location.replace(url.toString())
+        return
+      }
+
       const { verifier, state: expectedState } = popPkceState()
       if (!code || !verifier || !state || !expectedState || state !== expectedState) {
         setError('Invalid or missing state. Please try logging in again.')

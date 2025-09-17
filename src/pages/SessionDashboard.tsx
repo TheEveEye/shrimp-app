@@ -46,6 +46,7 @@ export default function SessionDashboard() {
   const [now, setNow] = useState<number>(Date.now())
   const localVersionRef = useRef<number>(0)
   const rowsByIdRef = useRef<Map<number, EnrichedCampaign>>(new Map())
+  const completedByIdRef = useRef<Map<number, EnrichedCampaign>>(new Map())
   const pendingCatchupRef = useRef<boolean>(false)
   const intervalRef = useRef<number | null>(null)
 
@@ -69,7 +70,11 @@ export default function SessionDashboard() {
           return
         }
         const byId = rowsByIdRef.current
-        for (const id of msg.removed) byId.delete(id)
+        for (const id of msg.removed) {
+          const old = byId.get(id)
+          if (old) completedByIdRef.current.set(id, old)
+          byId.delete(id)
+        }
         for (const row of msg.added as any[]) byId.set((row as any).campaign_id, row as any)
         for (const upd of msg.updated) {
           const cur = byId.get(upd.campaign_id)
@@ -102,7 +107,10 @@ export default function SessionDashboard() {
   }, [nav])
 
   const selectedIds = useMemo(() => (lobby.campaigns || []).map((c) => c.campaign_id), [lobby.campaigns])
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set())
+  const dismiss = (id: number) => setDismissed(prev => { const next = new Set(prev); next.add(id); return next })
   const selectedRows = useMemo(() => selectedIds.map((id) => snapshot.byId.get(id)), [selectedIds, snapshot])
+  const completedRows = useMemo(() => selectedIds.map((id) => completedByIdRef.current.get(id)), [selectedIds, snapshot])
 
   return (
     <div className="dashboard">
@@ -115,13 +123,26 @@ export default function SessionDashboard() {
                   <div key={`sk-${i}`} className="camp-card skeleton" aria-hidden="true" style={{ height: 56 }} />
                 ))
               ) : null}
-              {selectedRows.map((row, i) => (
-                row ? (
-                  <SovCampaignBar key={row.campaign_id} row={row} now={now} isStale={snapshot.isStale} />
-                ) : (
-                  <div key={`missing-${selectedIds[i]}`} className="camp-card skeleton" aria-hidden="true" style={{ height: 56 }} />
-                )
-              ))}
+              {selectedRows.map((row, i) => {
+                if (row) return <SovCampaignBar key={row.campaign_id} row={row} now={now} isStale={snapshot.isStale} />
+                const idNum = selectedIds[i]
+                const fallback = completedRows[i]
+                if (fallback && !dismissed.has(idNum)) {
+                  const defPct = Math.round((fallback.defender_score ?? 0) * 100)
+                  const winner = defPct >= 60 ? 'defense' as const : 'offense' as const
+                  return (
+                    <SovCampaignBar
+                      key={`completed-${idNum}`}
+                      row={fallback}
+                      now={now}
+                      isStale={snapshot.isStale}
+                      completedWinner={winner}
+                      onClose={() => dismiss(idNum)}
+                    />
+                  )
+                }
+                return <div key={`missing-${idNum}`} className="camp-card skeleton" aria-hidden="true" style={{ height: 56 }} />
+              })}
             </div>
         ) : null}
 

@@ -22,7 +22,7 @@ function toUnderscores(name?: string) {
   return (name ?? '').replace(/\s+/g, '_')
 }
 
-export default React.memo(function SovCampaignBar({ row, now, isStale }: { row: EnrichedCampaign; now: number; isStale: boolean }) {
+export default React.memo(function SovCampaignBar({ row, now, isStale, completedWinner, onClose }: { row: EnrichedCampaign; now: number; isStale: boolean; completedWinner?: 'defense' | 'offense'; onClose?: () => void }) {
   const defPct = row.def_pct ?? Math.round((row.defender_score ?? 0) * 100)
   const defSegments = useMemo(() => Math.round((row.defender_score ?? 0) * 15), [row.defender_score])
   const attSegments = 15 - defSegments
@@ -59,10 +59,14 @@ export default React.memo(function SovCampaignBar({ row, now, isStale }: { row: 
 
   const segs = useMemo(() => {
     const arr: Array<'def' | 'att'> = []
+    if (completedWinner) {
+      for (let i = 0; i < 15; i++) arr.push(completedWinner === 'defense' ? 'def' : 'att')
+      return arr
+    }
     for (let i = 0; i < defSegments; i++) arr.push('def')
     for (let i = 0; i < attSegments; i++) arr.push('att')
     return arr
-  }, [defSegments, attSegments])
+  }, [defSegments, attSegments, completedWinner])
 
   const dotlanUrl = reg && sys ? `https://evemaps.dotlan.net/map/${toUnderscores(reg)}/${toUnderscores(sys)}` : undefined
 
@@ -74,6 +78,11 @@ export default React.memo(function SovCampaignBar({ row, now, isStale }: { row: 
             <div key={idx} className={`camp-seg ${t}`} />
           ))}
         </div>
+        {completedWinner && onClose ? (
+          <button className="camp-close" aria-label="Dismiss completed campaign" title="Dismiss" onClick={onClose}>
+            <img src="/xmark.svg" className="icon-img" alt="" />
+          </button>
+        ) : null}
         <div className="camp-meta">
           {sys && sysUrl ? (
             <a className="name-link" href={sysUrl} target="_blank" rel="noreferrer">{sys}</a>
