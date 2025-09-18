@@ -24,7 +24,8 @@ type ServerMessage =
   // Toasters
   | { type: 'toaster.attached'; topic: string; toaster: any }
   | { type: 'toaster.detached'; topic: string; character_id: number }
-  | { type: 'toaster.location_updated'; topic: string; character_id: number; system_id?: number; ship_type_id?: number; ship_type_name?: string; online?: boolean; last_seen_at?: number };
+  | { type: 'toaster.location_updated'; topic: string; character_id: number; system_id?: number; ship_type_id?: number; ship_type_name?: string; online?: boolean; last_seen_at?: number }
+  | { type: 'toaster.updated'; topic: string; character_id: number; entosis_tier: 't1' | 't2' };
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
