@@ -61,7 +61,7 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
     const headers = new Headers()
     if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
     fetch(`${API_BASE}/api/characters/${character.id}/affiliation`, { headers, credentials: 'include' })
-      .then(res => res.ok ? res.json() as Promise<{ alliance_icon_url?: string | null }> : Promise.resolve({}))
+      .then(res => res.ok ? (res.json() as Promise<{ alliance_icon_url?: string | null }>) : Promise.resolve({} as { alliance_icon_url?: string | null }))
       .then(json => setMainAllyIcon(json?.alliance_icon_url ?? null))
       .catch(() => setMainAllyIcon(null))
   }, [open, character?.id, accessToken])

@@ -49,7 +49,7 @@ export default function AddToasterModal({ open, onClose, onAdd, attachedIds }: {
     const headers: Record<string, string> = {}
     if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
     fetch(`${API_BASE}/api/characters/${me.id}/affiliation`, { credentials: 'include', headers })
-      .then(res => res.ok ? res.json() as Promise<{ alliance_icon_url?: string | null }> : Promise.resolve({}))
+      .then(res => res.ok ? (res.json() as Promise<{ alliance_icon_url?: string | null }>) : Promise.resolve({} as { alliance_icon_url?: string | null }))
       .then((json) => setMainAllyIcon(json?.alliance_icon_url ?? null))
       .catch(() => setMainAllyIcon(null))
   }, [open, me?.id, API_BASE, accessToken])

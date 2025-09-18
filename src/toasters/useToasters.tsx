@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { wsClient } from '../lib/ws'
 
@@ -41,7 +41,7 @@ export function useToasters(sessionId: number) {
   // WS integration
   useEffect(() => {
     const off = wsClient.addMessageHandler((msg) => {
-      if (msg.topic !== `session.${sessionId}`) return
+      if ((msg as any).topic !== `session.${sessionId}`) return
       if (msg.type === 'toaster.attached') {
         const t = (msg as any).toaster as Toaster
         setItems((prev) => {
