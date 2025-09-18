@@ -193,7 +193,3 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
 function Badge({ label, ok }: { label: string; ok: boolean }) {
   return <span className={`badge ${ok ? 'ok' : 'warn'}`}>{label}</span>
 }
-
-// Confirmation modal for unlink action
-// Placed at root of component tree so it overlays correctly.
-export function ManageCharactersModalOverlay() { return null }
