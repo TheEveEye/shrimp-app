@@ -74,7 +74,7 @@ export default function AuthStatus() {
       ) : null}
       <Popover open={menuOpen} anchorRect={anchor || undefined} onClose={() => setMenuOpen(false)} align="right">
         <button role="menuitem" onClick={() => { setManageOpen(true); setMenuOpen(false) }} className="menu-item">
-          <img src="/person.2.badge.gearshape.fill.svg" alt="" aria-hidden="true" width={16} height={16} />
+          <Icon name="manageCharacters" size={16} alt="" />
           <span>Manage Characters</span>
         </button>
         <button role="menuitem" onClick={logout} className="menu-item">

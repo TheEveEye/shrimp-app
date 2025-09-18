@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import Icon from './Icon'
 import type { EnrichedCampaign } from './SovCampaignsTable'
 
 function formatT(ms: number) {
@@ -80,7 +81,7 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
         </div>
         {completedWinner && onClose ? (
           <button className="camp-close" aria-label="Dismiss completed campaign" title="Dismiss" onClick={onClose}>
-            <img src="/xmark.svg" className="icon-img" alt="" />
+            <Icon name="close" size={14} alt="" />
           </button>
         ) : null}
         <div className="camp-meta">

@@ -6,6 +6,7 @@ import SovCampaignBar from '../components/SovCampaignBar'
 import MembersSidebar from '../components/MembersSidebar'
 import type { EnrichedCampaign } from '../components/SovCampaignsTable'
 import { useAuth } from '../auth/AuthContext'
+import ToastersPanel from '../components/ToastersPanel'
 
 type Snapshot = {
   timestamp: number
@@ -159,6 +160,10 @@ export default function SessionDashboard() {
           <div className="muted">Coming soon</div>
         </div>
       </div>
+      {/* Toasters section */}
+      {id ? (
+        <ToastersPanel sessionId={Number(id)} />
+      ) : null}
       <MembersSidebar />
     </div>
   )

@@ -21,11 +21,12 @@ type Linked = {
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 export default function ManageCharactersModal({ open, onClose }: Props) {
-  const { accessToken } = useAuth()
+  const { accessToken, character } = useAuth()
   const { toast } = useToast()
   const [rows, setRows] = useState<Linked[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [mainAllyIcon, setMainAllyIcon] = useState<string | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [unlinkTarget, setUnlinkTarget] = useState<Linked | null>(null)
@@ -54,6 +55,16 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
 
   // Fetch on open
   useEffect(() => { if (open) void load() }, [open])
+  // Fetch affiliation for main when modal opens
+  useEffect(() => {
+    if (!open || !character) return
+    const headers = new Headers()
+    if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
+    fetch(`${API_BASE}/api/characters/${character.id}/affiliation`, { headers, credentials: 'include' })
+      .then(res => res.ok ? res.json() as Promise<{ alliance_icon_url?: string | null }> : Promise.resolve({}))
+      .then(json => setMainAllyIcon(json?.alliance_icon_url ?? null))
+      .catch(() => setMainAllyIcon(null))
+  }, [open, character?.id, accessToken])
 
   // No session attachment tracking
 
@@ -123,6 +134,24 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
 
   if (!open) return null
 
+  const displayRows = (() => {
+    const arr = rows.slice()
+    if (character && !arr.some(r => r.character_id === character.id)) {
+      arr.unshift({
+        character_id: character.id,
+        name: character.name || null,
+        portrait_url: character.portrait,
+        scopes: '',
+        has_location: true,
+        has_ship: true,
+        has_waypoint: true,
+        has_online: true,
+        alliance_icon_url: mainAllyIcon,
+      })
+    }
+    return arr
+  })()
+
   const node = (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="chars-title" aria-describedby="chars-desc">
       <div ref={panelRef} className="modal-panel modal-animate-in" style={{ maxWidth: 640 }}>
@@ -133,35 +162,44 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
           <p id="chars-desc" className="muted" style={{ marginTop: 0 }}>Link EVE characters and manage scopes.</p>
           {loading ? <div className="muted">Loading…</div> : null}
           <ul className="mc-list" aria-label="Linked characters">
-            {rows.map((r) => (
-              <li key={r.character_id} className="mc-row">
-                <div className="mc-info">
-                  <div className="mc-avatars">
-                    <img src={r.portrait_url} width={36} height={36} alt="" aria-hidden="true" style={{ borderRadius: '50%' }} />
+            {displayRows.map((r) => {
+              const isMain = !!character && r.character_id === character.id
+              const okLoc = isMain ? true : r.has_location
+              const okShip = isMain ? true : r.has_ship
+              const okWp = isMain ? true : r.has_waypoint
+              const okOn = isMain ? true : r.has_online
+              return (
+                <li key={r.character_id} className="mc-row">
+                  <div className="mc-info">
+                    <div className="mc-avatars">
+                      <img src={r.portrait_url} width={36} height={36} alt="" aria-hidden="true" style={{ borderRadius: '50%' }} />
                     {r.alliance_icon_url ? (
                       <img src={r.alliance_icon_url} width={36} height={36} alt="" aria-hidden="true" style={{ borderRadius: 4, marginTop: 6 }} />
                     ) : null}
-                  </div>
-                  <div className="mc-meta">
-                    <div className="mc-name" title={r.name || undefined}>{r.name ?? `#${r.character_id}`}</div>
-                    <div className="mc-scopes">
-                      <Badge label="Location" ok={r.has_location} />
-                      <Badge label="Ship" ok={r.has_ship} />
-                      <Badge label="Waypoint" ok={r.has_waypoint} />
-                      <Badge label="Online" ok={r.has_online} />
+                    </div>
+                    <div className="mc-meta">
+                      <div className="mc-name" title={r.name || undefined}>{r.name ?? `#${r.character_id}`}</div>
+                      <div className="mc-scopes">
+                        <Badge label="Location" ok={okLoc} />
+                        <Badge label="Ship" ok={okShip} />
+                        <Badge label="Waypoint" ok={okWp} />
+                        <Badge label="Online" ok={okOn} />
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="mc-actions">
-                  <button className="icon-plain" aria-label="Re-consent scopes" title="Re-consent" disabled={busyId === r.character_id} onClick={() => onReconsent(r.character_id)}>
-                    <Icon name="rotate" kind="mask" size={20} alt="" />
-                  </button>
-                  <button className="icon-plain danger" aria-label="Unlink character" title="Unlink" disabled={busyId === r.character_id} onClick={() => { setUnlinkTarget(r); setConfirmOpen(true) }}>
-                    <Icon name="unlink" kind="mask" size={20} alt="" />
-                  </button>
-                </div>
-              </li>
-            ))}
+                  {!isMain ? (
+                    <div className="mc-actions">
+                      <button className="icon-plain" aria-label="Re-consent scopes" title="Re-consent" disabled={busyId === r.character_id} onClick={() => onReconsent(r.character_id)}>
+                        <Icon name="rotate" kind="mask" size={20} alt="" />
+                      </button>
+                      <button className="icon-plain danger" aria-label="Unlink character" title="Unlink" disabled={busyId === r.character_id} onClick={() => { setUnlinkTarget(r); setConfirmOpen(true) }}>
+                        <Icon name="unlink" kind="mask" size={20} alt="" />
+                      </button>
+                    </div>
+                  ) : <span />}
+                </li>
+              )
+            })}
             {rows.length === 0 && !loading ? (<li className="muted">No linked characters yet.</li>) : null}
           </ul>
         </div>

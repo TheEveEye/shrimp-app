@@ -20,7 +20,11 @@ type ServerMessage =
   | { type: 'member.kicked'; topic: string; character_id: number }
   | { type: 'codes.rotated'; topic: string; role: 'coordinator' | 'line'; rotated_at: number }
   | { type: 'session.ended'; topic: string }
-  | { type: 'session.forced_leave' };
+  | { type: 'session.forced_leave' }
+  // Toasters
+  | { type: 'toaster.attached'; topic: string; toaster: any }
+  | { type: 'toaster.detached'; topic: string; character_id: number }
+  | { type: 'toaster.location_updated'; topic: string; character_id: number; system_id?: number; ship_type_id?: number; ship_type_name?: string; online?: boolean; last_seen_at?: number };
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
