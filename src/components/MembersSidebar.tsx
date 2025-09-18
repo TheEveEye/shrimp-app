@@ -4,6 +4,7 @@ import Icon from './Icon'
 import ConfirmModal from './ConfirmModal'
 import Popover from './Popover'
 import { useAuth } from '../auth/AuthContext'
+import CharacterAvatar from './ui/CharacterAvatar'
 
 type Role = 'coordinator' | 'line'
 
@@ -214,11 +215,14 @@ function Section({ title, role, code, canManage, members }: { title: string; rol
 }
 
 function Avatar({ member, size, ariaLabel }: { member: Member; size: number; ariaLabel?: string }) {
-  const src = member.portrait_url || `https://images.evetech.net/characters/${member.character_id}/portrait?size=64`
   return (
-    <div className="avatar-wrap" aria-label={ariaLabel}>
-      <img src={src} alt="" aria-hidden="true" className="avatar" style={{ width: size, height: size }} />
-      <span className={`online-dot ${member.online ? 'on' : 'off'}`} aria-hidden="true" />
-    </div>
+    <CharacterAvatar
+      characterId={member.character_id}
+      portraitUrl={member.portrait_url || undefined}
+      size={size}
+      showStatus={false}
+      imageProps={{ alt: '', 'aria-hidden': true }}
+      wrapProps={ariaLabel ? { 'aria-label': ariaLabel } : undefined}
+    />
   )
 }

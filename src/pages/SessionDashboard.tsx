@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSessions } from '../sessions/SessionsContext'
 import { wsClient } from '../lib/ws'
@@ -7,6 +8,8 @@ import MembersSidebar from '../components/MembersSidebar'
 import type { EnrichedCampaign } from '../components/SovCampaignsTable'
 import { useAuth } from '../auth/AuthContext'
 import ToastersPanel from '../components/ToastersPanel'
+import Panel from '../components/ui/Panel'
+import Icon from '../components/Icon'
 
 type Snapshot = {
   timestamp: number
@@ -109,57 +112,120 @@ export default function SessionDashboard() {
 
   const selectedIds = useMemo(() => (lobby.campaigns || []).map((c) => c.campaign_id), [lobby.campaigns])
   const [dismissed, setDismissed] = useState<Set<number>>(new Set())
-  const dismiss = (id: number) => setDismissed(prev => { const next = new Set(prev); next.add(id); return next })
+  const dismiss = useCallback((id: number) => {
+    setDismissed(prev => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }, [])
+  const [showCompleted, setShowCompleted] = useState(false)
   const selectedRows = useMemo(() => selectedIds.map((id) => snapshot.byId.get(id)), [selectedIds, snapshot])
   const completedRows = useMemo(() => selectedIds.map((id) => completedByIdRef.current.get(id)), [selectedIds, snapshot])
 
+  const showSkeletons = useMemo(() => !connected && selectedIds.length > 0 && snapshot.byId.size === 0, [connected, selectedIds.length, snapshot.byId.size])
+
+  const activeCards = useMemo(() => {
+    const cards: ReactNode[] = []
+    selectedIds.forEach((_, idx) => {
+      const row = selectedRows[idx]
+      if (row) {
+        cards.push(
+          <SovCampaignBar
+            key={row.campaign_id}
+            row={row}
+            now={now}
+            isStale={snapshot.isStale}
+          />
+        )
+      }
+    })
+    return cards
+  }, [selectedIds, selectedRows, now, snapshot.isStale])
+
+  const completedCards = useMemo(() => {
+    const cards: ReactNode[] = []
+    selectedIds.forEach((idNum, idx) => {
+      const fallback = completedRows[idx]
+      if (fallback && !dismissed.has(idNum)) {
+        const defPct = fallback.defender_score != null ? Math.round(fallback.defender_score * 100) : (fallback.def_pct ?? null)
+        let status: 'defense' | 'offense' | 'unknown'
+        if (defPct == null) status = 'unknown'
+        else status = defPct >= 60 ? 'defense' : 'offense'
+        cards.push(
+          <SovCampaignBar
+            key={`completed-${idNum}`}
+            row={fallback}
+            now={now}
+            isStale={snapshot.isStale}
+            completedStatus={status}
+            onClose={() => dismiss(idNum)}
+          />
+        )
+      }
+    })
+    return cards
+  }, [selectedIds, completedRows, dismissed, now, snapshot.isStale, dismiss])
+
+  const hasCompleted = completedCards.length > 0
+
+  useEffect(() => {
+    if (!hasCompleted) setShowCompleted(false)
+  }, [hasCompleted])
+
+  const showCampaignSection = showSkeletons || activeCards.length > 0 || (showCompleted && completedCards.length > 0)
+
+  const sessionLabel = lobby.slug || (lobby.sessionId ? `#${lobby.sessionId}` : 'Session');
+
   return (
     <div className="dashboard">
+      <div className="dashboard-heading">
+        <h1 className="dashboard-title">Session {sessionLabel}</h1>
+        {hasCompleted && !showCompleted ? (
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Show completed campaigns"
+            onClick={() => setShowCompleted(true)}
+          >
+            <Icon name="ellipsis" size={16} alt="" />
+          </button>
+        ) : null}
+      </div>
         {/* CampaignBars section */}
-        {selectedIds.length > 0 ? (
-            <div className="camp-list">
-              {/* Skeletons while waiting for first snapshot */}
-              {(!connected && selectedIds.length > 0 && snapshot.byId.size === 0) ? (
-                Array.from({ length: Math.min(selectedIds.length, 3) }).map((_, i) => (
-                  <div key={`sk-${i}`} className="camp-card skeleton" aria-hidden="true" style={{ height: 56 }} />
-                ))
-              ) : null}
-              {selectedRows.map((row, i) => {
-                if (row) return <SovCampaignBar key={row.campaign_id} row={row} now={now} isStale={snapshot.isStale} />
-                const idNum = selectedIds[i]
-                const fallback = completedRows[i]
-                if (fallback && !dismissed.has(idNum)) {
-                  const defPct = Math.round((fallback.defender_score ?? 0) * 100)
-                  const winner = defPct >= 60 ? 'defense' as const : 'offense' as const
-                  return (
-                    <SovCampaignBar
-                      key={`completed-${idNum}`}
-                      row={fallback}
-                      now={now}
-                      isStale={snapshot.isStale}
-                      completedWinner={winner}
-                      onClose={() => dismiss(idNum)}
-                    />
-                  )
-                }
-                return <div key={`missing-${idNum}`} className="camp-card skeleton" aria-hidden="true" style={{ height: 56 }} />
-              })}
-            </div>
+        {showCampaignSection ? (
+          <div className="camp-list">
+            {showSkeletons ? (
+              Array.from({ length: Math.min(selectedIds.length || 1, 3) }).map((_, i) => (
+                <div key={`sk-${i}`} className="camp-card skeleton" aria-hidden="true" style={{ height: 56 }} />
+              ))
+            ) : null}
+            {activeCards}
+            {showCompleted && completedCards.length > 0 ? (
+              <>
+                <div className="camp-collapse-wrapper" key="collapse-toggle">
+                  <button
+                    type="button"
+                    className="icon-btn camp-collapse-btn"
+                    aria-label="Hide completed campaigns"
+                    onClick={() => setShowCompleted(false)}
+                  >
+                    <Icon name="chevronCompactUp" size={16} alt="" />
+                  </button>
+                </div>
+                {completedCards}
+              </>
+            ) : null}
+          </div>
         ) : null}
 
         {/* Placeholders for future sections */}
-      <div className="panel" style={{ marginTop: 16 }}>
-        <div className="panel-header"><div className="panel-title">Active Nodes</div></div>
-        <div className="panel-body" style={{ padding: 20 }}>
-          <div className="muted">Coming soon</div>
-        </div>
-      </div>
-      <div className="panel" style={{ marginTop: 16 }}>
-        <div className="panel-header"><div className="panel-title">Event Feed</div></div>
-        <div className="panel-body" style={{ padding: 20 }}>
-          <div className="muted">Coming soon</div>
-        </div>
-      </div>
+      <Panel title="Active Nodes" style={{ marginTop: 16 }} bodyStyle={{ padding: 20 }}>
+        <div className="muted">Coming soon</div>
+      </Panel>
+      <Panel title="Event Feed" style={{ marginTop: 16 }} bodyStyle={{ padding: 20 }}>
+        <div className="muted">Coming soon</div>
+      </Panel>
       {/* Toasters section */}
       {id ? (
         <ToastersPanel sessionId={Number(id)} />

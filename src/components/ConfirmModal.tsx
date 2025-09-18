@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import ModalFrame from './ui/ModalFrame'
 
 type Props = {
   open: boolean
@@ -22,17 +23,13 @@ export default function ConfirmModal({ open, title, message, confirmText = 'Conf
   if (!open) return null
 
   const node = (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-      <div className="modal-panel">
-        <div className="modal-header"><div id="confirm-title" className="modal-title">{title}</div></div>
-        <div className="modal-body">{message}</div>
-        <div className="modal-actions">
-          <button type="button" className="button" onClick={onCancel}>{cancelText}</button>
-          <button type="button" className={`button ${variant === 'danger' ? 'danger' : 'primary'}`} onClick={onConfirm}>{confirmText}</button>
-        </div>
+    <ModalFrame titleId="confirm-title" title={title}>
+      <div className="modal-body">{message}</div>
+      <div className="modal-actions">
+        <button type="button" className="button" onClick={onCancel}>{cancelText}</button>
+        <button type="button" className={`button ${variant === 'danger' ? 'danger' : 'primary'}`} onClick={onConfirm}>{confirmText}</button>
       </div>
-    </div>
+    </ModalFrame>
   )
   return createPortal(node, document.body)
 }
-

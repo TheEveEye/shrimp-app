@@ -248,6 +248,9 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 .camp-seg { height: 100%; }
 .camp-seg.def { background: var(--accent); }
 .camp-seg.att { background: var(--danger); }
+.camp-seg.completed { background: var(--success); }
+.camp-card.completed-unknown .camp-strip { background: var(--success); }
+.camp-card.completed-unknown .camp-center { gap: 4px; }
 .camp-meta { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text); white-space: nowrap; max-width: 45%; overflow: hidden; text-overflow: ellipsis; pointer-events: auto; text-shadow: 0 1px 2px rgb(0, 0, 0); }
 [data-theme='light'] .camp-meta { text-shadow: 0 1px 3px rgba(0,0,0,1); }
 .camp-overlay { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); height: 24px; display: flex; align-items: center; justify-content: center; gap: 12px; pointer-events: none; text-shadow: 0 1px 1px rgba(0,0,0,0.55); }
@@ -259,15 +262,20 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 /* Stronger text shadow for readability over colored segments */
 .camp-eta, .camp-score { text-shadow: 0px 1px 3px rgba(0, 0, 0, 1); }
 [data-theme='light'] .camp-eta, [data-theme='light'] .camp-score { text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.camp-completed-label { letter-spacing: 0.18em; font-weight: 700; font-size: 15px; text-transform: uppercase; text-shadow: 0 1px 3px rgba(0,0,0,0.65); }
 .stale-badge { height: 20px; font-size: 12px; margin-left: 8px; padding: 0 8px; background: var(--warning-weak); border-color: var(--warning); color: var(--warning); }
 /* Close button on campaign bar */
 .camp-close { position: absolute; top: 6px; right: 8px; width: 28px; height: 28px; border-radius: 999px; border: 1px solid var(--border); background: var(--chip-bg); color: inherit; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
 .camp-close:hover { box-shadow: 0 0 0 2px var(--accent-weak) inset; }
 .camp-close:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-weak); }
+.camp-collapse-wrapper { display: flex; justify-content: center; margin: 8px 0; }
+.camp-collapse-btn { width: 28px; height: 28px; }
 
 /* Dashboard two-column layout */
 .dashboard-grid { display: block; }
 .dashboard-main { min-width: 0; }
+.dashboard-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.dashboard-title { font-size: 18px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin: 0; }
 
 /* Members sidebar */
 .members-sidebar { position: fixed; right: 24px; top: 88px; z-index: 10; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-panel); overflow: hidden; height: calc(100vh - 112px); }
@@ -330,6 +338,7 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 .avatar { display: block; border-radius: 999px; border: 0; }
 .online-dot { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--panel); background: var(--text-muted); }
 .online-dot.on { background: var(--success); }
+.online-dot.off { background: var(--danger); }
 
 .ally-icon { width: 36px; height: 36px; display: block; border: 0; border-radius: 4px; }
 

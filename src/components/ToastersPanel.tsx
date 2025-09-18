@@ -5,6 +5,9 @@ import ConfirmModal from './ConfirmModal'
 import Icon from './Icon'
 import AddToasterModal from './AddToasterModal'
 import ToasterSettingsModal from './ToasterSettingsModal'
+import Panel from './ui/Panel'
+import CharacterAvatar from './ui/CharacterAvatar'
+import Badge from './ui/Badge'
 
 export default function ToastersPanel({ sessionId }: { sessionId: number }) {
   const { items, loading, fetchAll, attach, detach, updateTier } = useToasters(sessionId)
@@ -19,14 +22,13 @@ export default function ToastersPanel({ sessionId }: { sessionId: number }) {
   const attachedIds = useMemo(() => items.map(i => i.character_id), [items])
 
   return (
-    <div className="panel" style={{ marginTop: 16 }}>
-      <div className="panel-header">
-        <div className="panel-title">Toasters</div>
-        <div className="controls">
-          <button className="button" onClick={() => setOpen(true)}>Add Toaster</button>
-        </div>
-      </div>
-      <div className="panel-body" style={{ padding: 16 }}>
+    <>
+      <Panel
+        title="Toasters"
+        controls={<button className="button" onClick={() => setOpen(true)}>Add Toaster</button>}
+        style={{ marginTop: 16 }}
+        bodyStyle={{ padding: 16 }}
+      >
         {items.length === 0 && !loading ? (
           <div className="muted">No toasters yet.</div>
         ) : null}
@@ -35,10 +37,13 @@ export default function ToastersPanel({ sessionId }: { sessionId: number }) {
             <div key={t.character_id} className="panel" style={{ padding: 12, position: 'relative', borderRadius: 12 }} aria-label={`Toaster: ${t.name || t.character_id}, ${t.ship_type_name || '—'}, ${t.entosis_tier.toUpperCase()}`}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div className="avatar-wrap">
-                    <img src={t.portrait_url || `https://images.evetech.net/characters/${t.character_id}/portrait?size=64`} className="avatar" style={{ width: 44, height: 44 }} alt="" aria-hidden />
-                    <span className={`online-dot ${t.online ? 'on' : 'off'}`} aria-hidden />
-                  </div>
+                  <CharacterAvatar
+                    characterId={t.character_id}
+                    portraitUrl={t.portrait_url}
+                    size={44}
+                    online={t.online}
+                    imageProps={{ alt: '', 'aria-hidden': true }}
+                  />
                   <div>
                     <div style={{ fontWeight: 600 }}>{t.name || `#${t.character_id}`}</div>
                     <div className="muted" style={{ fontSize: 12 }}>{t.ship_type_name || '—'}</div>
@@ -49,7 +54,9 @@ export default function ToastersPanel({ sessionId }: { sessionId: number }) {
                 ) : <span />}
               </div>
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className={`badge ${t.entosis_tier === 't2' ? 'ok' : 'warn'}`} title={t.entosis_tier === 't2' ? '2:00 cycles' : '5:00 cycles'}>{t.entosis_tier.toUpperCase()}</span>
+                <Badge variant={t.entosis_tier === 't2' ? 'ok' : 'warn'} title={t.entosis_tier === 't2' ? '2:00 cycles' : '5:00 cycles'}>
+                  {t.entosis_tier.toUpperCase()}
+                </Badge>
                 <span className="muted" style={{ fontSize: 12 }}>{t.entosis_tier === 't2' ? '2:00 cycles' : '5:00 cycles'}</span>
               </div>
               <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -61,7 +68,7 @@ export default function ToastersPanel({ sessionId }: { sessionId: number }) {
             </div>
           ))}
         </div>
-      </div>
+      </Panel>
       <AddToasterModal open={open} onClose={() => setOpen(false)} onAdd={attach} attachedIds={attachedIds} />
       {(() => {
         const cur = items.find(i => i.character_id === editing)
@@ -87,6 +94,6 @@ export default function ToastersPanel({ sessionId }: { sessionId: number }) {
           finally { setConfirm({ open: false }) }
         }}
       />
-    </div>
+    </>
   )
 }

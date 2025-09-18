@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSessions } from '../sessions/SessionsContext'
+import Badge from './ui/Badge'
 
 function formatUtc(dt: number | string): string {
   const d = typeof dt === 'number' ? new Date(dt) : new Date(dt)
@@ -101,13 +102,13 @@ export default function ActiveSessionsRail() {
                   tabIndex={0}
                   onClick={go}
                   onKeyDown={onKey}
-                  aria-label={`Open Session #${s.id} dashboard`}
+                  aria-label={`Open session ${s.slug || s.id} dashboard`}
                 >
                   <div className="row top">
                     <div className="left">
-                      <div className="session-label">Session #{s.id}</div>
+                      <div className="session-label">Session {s.slug || s.id}</div>
                       {role ? (
-                        <span className={`badge ${role === 'coordinator' ? 'ok' : ''}`}>{role}</span>
+                        <Badge variant={role === 'coordinator' ? 'ok' : 'default'}>{role}</Badge>
                       ) : null}
                     </div>
                     <div className="right">

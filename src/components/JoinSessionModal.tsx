@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useSessions } from '../sessions/SessionsContext'
 import { useToast } from './ToastProvider'
 import { useNavigate } from 'react-router-dom'
+import ModalFrame from './ui/ModalFrame'
 
 type Props = {
   open: boolean
@@ -88,11 +89,15 @@ export default function JoinSessionModal({ open, onClose }: Props) {
   if (!open) return null
 
   const node = (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="join-modal-title" aria-describedby="join-modal-desc">
-      <div ref={panelRef} className="modal-panel modal-animate-in">
-        <div className="modal-header"><div id="join-modal-title" className="modal-title">Join Session</div></div>
-        <form onSubmit={onSubmit}>
-          <div className="modal-body">
+    <ModalFrame
+      ref={panelRef}
+      titleId="join-modal-title"
+      title="Join Session"
+      panelClassName="modal-animate-in"
+      ariaDescribedBy="join-modal-desc"
+    >
+      <form onSubmit={onSubmit}>
+        <div className="modal-body">
             <p id="join-modal-desc" className="muted" style={{ marginTop: 0, marginBottom: 12 }}>
               Enter a join code provided by a coordinator.
             </p>
@@ -113,20 +118,19 @@ export default function JoinSessionModal({ open, onClose }: Props) {
               required
             />
           </div>
-          <div className="modal-actions">
-            <button type="button" className="button" onClick={onClose} disabled={submitting}>Cancel</button>
-            <button type="submit" className="button primary" disabled={!isValid || submitting}>
-              {submitting ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <span className="spinner sm" aria-hidden="true" />
-                  Joining…
-                </span>
-              ) : 'Join'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="modal-actions">
+          <button type="button" className="button" onClick={onClose} disabled={submitting}>Cancel</button>
+          <button type="submit" className="button primary" disabled={!isValid || submitting}>
+            {submitting ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span className="spinner sm" aria-hidden="true" />
+                Joining…
+              </span>
+            ) : 'Join'}
+          </button>
+        </div>
+      </form>
+    </ModalFrame>
   )
 
   return createPortal(node, document.body)

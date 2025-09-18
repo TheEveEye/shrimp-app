@@ -5,6 +5,7 @@ import { useToast } from '../components/ToastProvider'
 import Icon from '../components/Icon'
 import SovCampaignsTable from '../components/SovCampaignsTable'
 import type { EnrichedCampaign } from '../components/SovCampaignsTable'
+import Panel from '../components/ui/Panel'
 
 export default function SessionsNew() {
   const [selected, setSelected] = useState<Map<number, 'offense' | 'defense'>>(new Map())
@@ -55,41 +56,39 @@ export default function SessionsNew() {
           <button className="button primary" onClick={onSubmit} disabled={creating || counts.total === 0}>{creating ? 'Creating…' : 'Create Session'}</button>
         </div>
       </header>
-      <div className="panel">
-        <div className="panel-body">
-          <SovCampaignsTable
-            rowClassName={(row: EnrichedCampaign) => {
-              const picked = selected.get(row.campaign_id)
-              return picked ? (picked === 'offense' ? 'row-selected offense' : 'row-selected defense') : ''
-            }}
-            rowOverlay={(row: EnrichedCampaign) => {
-              const picked = selected.get(row.campaign_id)
-              return (
-                <>
-                  <button
-                    type="button"
-                    className={`action-btn offense`}
-                    aria-label="Select Offensive"
-                    aria-pressed={picked === 'offense'}
-                    onClick={() => setSide(row.campaign_id, 'offense')}
-                  >
-                    <Icon name="sword" size={20} className="glyph sword" alt="" />
-                  </button>
-                  <button
-                    type="button"
-                    className={`action-btn defense`}
-                    aria-label="Select Defensive"
-                    aria-pressed={picked === 'defense'}
-                    onClick={() => setSide(row.campaign_id, 'defense')}
-                  >
-                    <Icon name="shield" kind="mask" size={20} className="glyph shield" alt="" />
-                  </button>
-                </>
-              )
-            }}
-          />
-        </div>
-      </div>
+      <Panel>
+        <SovCampaignsTable
+          rowClassName={(row: EnrichedCampaign) => {
+            const picked = selected.get(row.campaign_id)
+            return picked ? (picked === 'offense' ? 'row-selected offense' : 'row-selected defense') : ''
+          }}
+          rowOverlay={(row: EnrichedCampaign) => {
+            const picked = selected.get(row.campaign_id)
+            return (
+              <>
+                <button
+                  type="button"
+                  className={`action-btn offense`}
+                  aria-label="Select Offensive"
+                  aria-pressed={picked === 'offense'}
+                  onClick={() => setSide(row.campaign_id, 'offense')}
+                >
+                  <Icon name="sword" size={20} className="glyph sword" alt="" />
+                </button>
+                <button
+                  type="button"
+                  className={`action-btn defense`}
+                  aria-label="Select Defensive"
+                  aria-pressed={picked === 'defense'}
+                  onClick={() => setSide(row.campaign_id, 'defense')}
+                >
+                  <Icon name="shield" kind="mask" size={20} className="glyph shield" alt="" />
+                </button>
+              </>
+            )
+          }}
+        />
+      </Panel>
     </>
   )
 }

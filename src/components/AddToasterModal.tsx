@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useToast } from './ToastProvider'
-import Icon from './Icon'
 import Popover from './Popover'
 import { useAuth } from '../auth/AuthContext'
+import ModalFrame from './ui/ModalFrame'
+import CharacterAvatar from './ui/CharacterAvatar'
+import CharacterRow from './ui/CharacterRow'
+import TierToggle from './ui/TierToggle'
 
 type LinkedItem = {
   character_id: number
@@ -15,6 +18,7 @@ type LinkedItem = {
   has_waypoint: boolean
   has_online: boolean
   alliance_icon_url?: string | null
+  online?: boolean | null
 }
 
 export default function AddToasterModal({ open, onClose, onAdd, attachedIds }: { open: boolean; onClose: () => void; onAdd: (character_id: number, tier: 't1'|'t2') => Promise<void>; attachedIds: number[] }) {
@@ -68,6 +72,7 @@ export default function AddToasterModal({ open, onClose, onAdd, attachedIds }: {
           has_ship: true,
           has_waypoint: true,
           has_online: true,
+          online: true,
           alliance_icon_url: mainAllyIcon || undefined,
         }
         list = [mainItem, ...list]
@@ -113,88 +118,97 @@ export default function AddToasterModal({ open, onClose, onAdd, attachedIds }: {
   }
 
   const node = (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="addtoaster-title">
-      <div ref={panelRef} className="modal-panel modal-animate-in" style={{ maxWidth: 560 }}>
-        <div className="modal-header">
-          <div id="addtoaster-title" className="modal-title">Add Toaster</div>
-        </div>
-        <div className="modal-body">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <label className="form-label">Character</label>
+    <ModalFrame
+      ref={panelRef}
+      titleId="addtoaster-title"
+      title="Add Toaster"
+      panelClassName="modal-animate-in"
+      panelStyle={{ maxWidth: 560 }}
+    >
+      <div className="modal-body">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <label className="form-label">Character</label>
               <button
                 ref={selectBtnRef}
                 type="button"
                 className="input"
-                style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, cursor: 'pointer' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, height: 52, width: '100%', padding: '0 12px', cursor: 'pointer' }}
                 onClick={() => {
                   setMenuOpen((o) => !o)
                   const el = selectBtnRef.current
                   if (el) setAnchor(el.getBoundingClientRect())
                 }}
-                aria-haspopup="listbox"
-                aria-expanded={menuOpen}
-              >
-                {(() => {
-                  const sel = available.find(a => a.character_id === selectedId)
-                  if (sel) return (
-                    <>
-                      <img src={sel.portrait_url} className="avatar" alt="" aria-hidden style={{ width: 24, height: 24, borderRadius: '50%' }} />
-                      <span>{sel.name || `#${sel.character_id}`}</span>
-                      <span style={{ flex: 1 }} />
-                      <Icon name="chevronDown" size={14} alt="" style={{ opacity: 0.9, transform: menuOpen ? 'rotate(180deg)' : 'none', filter: 'brightness(0) invert(1)' }} />
-                    </>
-                  )
-                  return (
-                    <>
-                      <span className="muted">Select a character…</span>
-                      <span style={{ flex: 1 }} />
-                      <Icon name="chevronDown" size={14} alt="" style={{ opacity: 0.9, filter: 'brightness(0) invert(1)' }} />
-                    </>
-                  )
-                })()}
-              </button>
-              <Popover open={menuOpen} anchorRect={anchor || undefined} onClose={() => setMenuOpen(false)} align="left">
-                <ul role="listbox" aria-label="Characters" className="members-list" style={{ maxHeight: 260, overflow: 'auto', minWidth: 280 }}>
-                  {loading ? <li className="muted" style={{ padding: 12 }}>Loading…</li> : null}
-                  {available.map((r) => (
-                    <li
-                      key={r.character_id}
-                      className={`member-row ${selectedId === r.character_id ? 'row-selected' : ''}`}
-                      role="option"
-                      aria-selected={selectedId === r.character_id}
-                      onClick={() => { setSelectedId(r.character_id); setMenuOpen(false) }}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <div className="left">
-                        <div className="avatar-wrap"><img src={r.portrait_url} className="avatar" style={{ width: 36, height: 36 }} alt="" aria-hidden /></div>
-                        <div className="name" title={r.name || undefined}>{r.name || `#${r.character_id}`}</div>
-                      </div>
-                      {r.alliance_icon_url ? (
-                        <img src={r.alliance_icon_url} alt="" aria-hidden className="ally-icon" style={{ width: 36, height: 36, borderRadius: 4 }} />
-                      ) : <span />}
-                    </li>
-                  ))}
-                  {available.length === 0 && !loading ? (<li className="muted" style={{ padding: 12 }}>No available characters</li>) : null}
-                </ul>
-              </Popover>
-            </div>
-            
-            <div>
-              <label className="form-label">Entosis Link Tier</label>
-              <div style={{ display: 'inline-flex', gap: 6 }}>
-                <button type="button" className={`button ${tier==='t2' ? 'primary' : ''}`} onClick={() => setTier('t2')} title="T2 (2:00 cycles)">T2</button>
-                <button type="button" className={`button ${tier==='t1' ? 'danger' : ''}`} onClick={() => setTier('t1')} title="T1 (5:00 cycles)">T1</button>
-              </div>
-            </div>
+              aria-haspopup="listbox"
+              aria-expanded={menuOpen}
+            >
+                      {(() => {
+                        const sel = available.find(a => a.character_id === selectedId)
+                        if (sel) return (
+                          <>
+                            <CharacterAvatar
+                              characterId={sel.character_id}
+                              portraitUrl={sel.portrait_url}
+                              size={36}
+                              online={sel.online}
+                              imageProps={{ alt: '', 'aria-hidden': true, style: { borderRadius: '50%' } }}
+                            />
+                    <span>{sel.name || `#${sel.character_id}`}</span>
+                    <span style={{ flex: 1 }} />
+                      <span style={{ width: 12 }} />
+                  </>
+                )
+                return (
+                  <>
+                    <span className="muted">Select a character…</span>
+                    <span style={{ flex: 1 }} />
+                      <span style={{ width: 12 }} />
+                  </>
+                )
+              })()}
+            </button>
+            <Popover open={menuOpen} anchorRect={anchor || undefined} onClose={() => setMenuOpen(false)} align="left">
+              <ul role="listbox" aria-label="Characters" className="members-list" style={{ maxHeight: 260, overflow: 'auto', minWidth: 280 }}>
+                {loading ? <li className="muted" style={{ padding: 12 }}>Loading…</li> : null}
+                {available.map((r) => (
+                  <li
+                    key={r.character_id}
+                    className={`member-row ${selectedId === r.character_id ? 'row-selected' : ''}`}
+                    role="option"
+                    aria-selected={selectedId === r.character_id}
+                    onClick={() => { setSelectedId(r.character_id); setMenuOpen(false) }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <CharacterRow
+                      characterId={r.character_id}
+                      portraitUrl={r.portrait_url}
+                      name={r.name}
+                      online={r.online}
+                      className="left"
+                      nameClassName="name"
+                      title={r.name || undefined}
+                    />
+                    {r.alliance_icon_url ? (
+                      <img src={r.alliance_icon_url} alt="" aria-hidden className="ally-icon" style={{ width: 36, height: 36, borderRadius: 4 }} />
+                    ) : <span />}
+                  </li>
+                ))}
+                {available.length === 0 && !loading ? (<li className="muted" style={{ padding: 12 }}>No available characters</li>) : null}
+              </ul>
+            </Popover>
+          </div>
+
+          <div>
+            <label className="form-label">Entosis Link Tier</label>
+            <TierToggle value={tier} onChange={setTier} />
           </div>
         </div>
-        <div className="modal-actions">
-          <button type="button" className="button" onClick={onClose}>Cancel</button>
-          <button type="button" className="button primary" onClick={() => void submit()} disabled={!selectedId}>Add</button>
-        </div>
       </div>
-    </div>
+      <div className="modal-actions">
+        <button type="button" className="button" onClick={onClose}>Cancel</button>
+        <button type="button" className="button primary" onClick={() => void submit()} disabled={!selectedId}>Add</button>
+      </div>
+    </ModalFrame>
   )
 
   return createPortal(node, document.body)

@@ -1,6 +1,7 @@
 import { useAuth } from '../auth/AuthContext'
 import { useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import Panel from '../components/ui/Panel'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -11,10 +12,10 @@ export default function LoginPage() {
     await login()
   }, [login, search])
   return (
-    <div className="panel" style={{ padding: 24 }}>
+    <Panel noBody style={{ padding: 24 }}>
       <h2>Login Required</h2>
       <p>You need to sign in to access sessions.</p>
       <button className="button" onClick={onLogin}>Log in with EVE Online</button>
-    </div>
+    </Panel>
   )
 }

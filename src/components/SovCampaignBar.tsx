@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import Icon from './Icon'
+import Badge from './ui/Badge'
 import type { EnrichedCampaign } from './SovCampaignsTable'
 
 function formatT(ms: number) {
@@ -23,23 +24,30 @@ function toUnderscores(name?: string) {
   return (name ?? '').replace(/\s+/g, '_')
 }
 
-export default React.memo(function SovCampaignBar({ row, now, isStale, completedWinner, onClose }: { row: EnrichedCampaign; now: number; isStale: boolean; completedWinner?: 'defense' | 'offense'; onClose?: () => void }) {
-  const defPct = row.def_pct ?? Math.round((row.defender_score ?? 0) * 100)
-  const defSegments = useMemo(() => Math.round((row.defender_score ?? 0) * 15), [row.defender_score])
+type CompletedStatus = 'defense' | 'offense' | 'unknown'
+
+export default React.memo(function SovCampaignBar({ row, now, isStale, completedStatus, onClose }: { row: EnrichedCampaign; now: number; isStale: boolean; completedStatus?: CompletedStatus; onClose?: () => void }) {
+  const normalizedDefScore = row.defender_score ?? (completedStatus === 'defense' ? 1 : completedStatus === 'offense' ? 0 : 0)
+  const effectiveDefPct = row.def_pct ?? Math.round(normalizedDefScore * 100)
+
+  let defSegmentsBase = Math.round(normalizedDefScore * 15)
+  if (completedStatus === 'defense') defSegmentsBase = 15
+  if (completedStatus === 'offense') defSegmentsBase = 0
+  const defSegments = defSegmentsBase
   const attSegments = 15 - defSegments
 
   // Mirror SovCampaignsTable remaining node logic
   const ATTACKERS_TOTAL = 9
   const DEFENDERS_TOTAL = 6
   const NODE_PCT = 100 / 15 // 6.6667%
-  const above = Math.max(defPct - 60, 0)
-  const below = Math.max(60 - defPct, 0)
+  const above = Math.max(effectiveDefPct - 60, 0)
+  const below = Math.max(60 - effectiveDefPct, 0)
   const incAbove = Math.round(above / NODE_PCT - 1e-9)
   const incBelow = Math.round(below / NODE_PCT - 1e-9)
-  const attacker_remaining = defPct >= 60
+  const attacker_remaining = effectiveDefPct >= 60
     ? ATTACKERS_TOTAL + incAbove
     : Math.max(ATTACKERS_TOTAL - incBelow, 0)
-  const defender_remaining = defPct <= 60
+  const defender_remaining = effectiveDefPct <= 60
     ? DEFENDERS_TOTAL + incBelow
     : Math.max(DEFENDERS_TOTAL - incAbove, 0)
 
@@ -56,30 +64,42 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
   const conUrl = regSlug && conSlug ? `https://evemaps.dotlan.net/map/${regSlug}/${conSlug}` : undefined
   const regUrl = regSlug ? `https://evemaps.dotlan.net/map/${regSlug}` : undefined
 
-  const ariaLabel = `Sovereignty campaign for ${sys}${reg ? ' in ' + reg : ''}. ETA ${eta}. Score ${defender_remaining} defender / ${attacker_remaining} attacker remaining.`
+  const ariaLabel = completedStatus
+    ? completedStatus === 'unknown'
+      ? `Completed campaign for ${sys}${reg ? ' in ' + reg : ''}. Status unknown.`
+      : `Completed campaign for ${sys}${reg ? ' in ' + reg : ''}. ${completedStatus === 'defense' ? 'Defenders' : 'Attackers'} secured the objective.`
+    : `Sovereignty campaign for ${sys}${reg ? ' in ' + reg : ''}. ETA ${eta}. Score ${defender_remaining} defender / ${attacker_remaining} attacker remaining.`
 
   const segs = useMemo(() => {
-    const arr: Array<'def' | 'att'> = []
-    if (completedWinner) {
-      for (let i = 0; i < 15; i++) arr.push(completedWinner === 'defense' ? 'def' : 'att')
-      return arr
+    if (completedStatus === 'unknown') {
+      return Array(15).fill('completed')
     }
+    if (completedStatus === 'defense') return Array(15).fill('def')
+    if (completedStatus === 'offense') return Array(15).fill('att')
+    const arr: Array<'def' | 'att'> = []
     for (let i = 0; i < defSegments; i++) arr.push('def')
     for (let i = 0; i < attSegments; i++) arr.push('att')
     return arr
-  }, [defSegments, attSegments, completedWinner])
+  }, [completedStatus, defSegments, attSegments])
 
   const dotlanUrl = reg && sys ? `https://evemaps.dotlan.net/map/${toUnderscores(reg)}/${toUnderscores(sys)}` : undefined
 
+  const cardClass = ['camp-card']
+  if (isStale) cardClass.push('stale')
+  if (completedStatus === 'unknown') cardClass.push('completed-unknown')
+  const showCompletedLabel = completedStatus === 'unknown'
+  const displayDefenderRemaining = showCompletedLabel ? 0 : defender_remaining
+  const displayAttackerRemaining = showCompletedLabel ? 0 : attacker_remaining
+
   return (
-    <section className={`camp-card${isStale ? ' stale' : ''}`} aria-label={ariaLabel}>
+    <section className={cardClass.join(' ')} aria-label={ariaLabel}>
       <div className="camp-strip-wrap">
         <div className="camp-strip" aria-hidden="true">
           {segs.map((t, idx) => (
             <div key={idx} className={`camp-seg ${t}`} />
           ))}
         </div>
-        {completedWinner && onClose ? (
+        {completedStatus && onClose ? (
           <button className="camp-close" aria-label="Dismiss completed campaign" title="Dismiss" onClick={onClose}>
             <Icon name="close" size={14} alt="" />
           </button>
@@ -106,9 +126,13 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
             <img className="camp-icon" src={ownerIcon} width={32} height={32} alt="owner icon" />
           ) : null}
           <div className="camp-center mono">
-            <span className="camp-eta">{eta}</span>
-            <span className="camp-score"><span className="score-def">{defender_remaining}</span>/<span className="score-att">{attacker_remaining}</span></span>
-            {isStale ? <span className="badge warn stale-badge">STALE</span> : null}
+            {!showCompletedLabel ? <span className="camp-eta">{eta}</span> : null}
+            {showCompletedLabel ? (
+              <span className="camp-completed-label">COMPLETED</span>
+            ) : (
+              <span className="camp-score"><span className="score-def">{displayDefenderRemaining}</span>/<span className="score-att">{displayAttackerRemaining}</span></span>
+            )}
+            {isStale ? <Badge className="stale-badge" variant="warn">STALE</Badge> : null}
           </div>
         </div>
       </div>

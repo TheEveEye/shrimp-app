@@ -20,6 +20,7 @@ type Member = {
 
 type Lobby = {
   sessionId?: number
+  slug?: string
   members: Member[]
   myRole?: Role
   created_at?: number
@@ -33,7 +34,7 @@ type Lobby = {
 type ActiveSessionCampaign = { campaign_id: number; side: 'offense' | 'defense'; system_name?: string; region_name?: string; constellation_id?: number; constellation_name?: string }
 type ActiveSessionCreator = { character_id: number; name?: string; portrait_url?: string | null }
 type ActiveSessionSummary = { offensive: number; defensive: number; constellations: number }
-type ActiveSessionTile = { id: number; created_at: number; owner_id: number; role?: Role; creator?: ActiveSessionCreator; campaigns?: ActiveSessionCampaign[]; summary?: ActiveSessionSummary; connected?: number }
+type ActiveSessionTile = { id: number; slug: string; created_at: number; owner_id: number; role?: Role; creator?: ActiveSessionCreator; campaigns?: ActiveSessionCampaign[]; summary?: ActiveSessionSummary; connected?: number }
 
 type Ctx = {
   lobby: Lobby
@@ -42,7 +43,7 @@ type Ctx = {
   fetchActiveSessions: () => Promise<void>
   openLobby: (id: number) => Promise<void>
   closeLobby: () => void
-  createSession: (items: Array<{ campaign_id: number; side: 'offense' | 'defense' }>) => Promise<{ id: number; coordinator_code: string; line_code: string }>
+  createSession: (items: Array<{ campaign_id: number; side: 'offense' | 'defense' }>) => Promise<{ id: number; slug: string; coordinator_code: string; line_code: string }>
   joinWithCode: (code: string) => Promise<{ id: number; role: Role }>
   rotateCode: (role: Role) => Promise<string>
   kick: (character_id: number) => Promise<void>
@@ -99,6 +100,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
         setLobby((l) => ({
           ...l,
           sessionId: raw.meta?.id,
+          slug: raw.meta?.slug,
           members: raw.members || [],
           created_at: raw.meta?.created_at,
           owner_id: raw.meta?.owner_id,
@@ -163,7 +165,10 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
       const res = await authedFetch(`${API_BASE}/v1/me/sessions?status=active`)
       if (!res.ok) { setActiveSessions([]); return }
       const json = await res.json()
-      const rows = (json.sessions || []) as ActiveSessionTile[]
+      const rows = (json.sessions || []).map((row: any) => ({
+        ...row,
+        slug: typeof row?.slug === 'string' && row.slug.trim() ? row.slug : String(row?.id ?? ''),
+      })) as ActiveSessionTile[]
       setActiveSessions(rows)
     } finally {
       setActiveSessionsLoading(false)
@@ -185,7 +190,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     if (!res.ok) throw new Error('failed')
     const json = await res.json()
     const my = character ? (json.members || []).find((m: any) => m.character_id === character.id)?.role : undefined
-    setLobby((l) => ({ ...l, sessionId: id, members: json.members || [], created_at: json.session?.created_at, owner_id: json.session?.owner_id, campaigns: json.session?.campaigns, coordinator_code: json.coordinator_code, line_code: json.line_code, myRole: my }))
+    setLobby((l) => ({ ...l, sessionId: id, slug: json.session?.slug, members: json.members || [], created_at: json.session?.created_at, owner_id: json.session?.owner_id, campaigns: json.session?.campaigns, coordinator_code: json.coordinator_code, line_code: json.line_code, myRole: my }))
     // Subscribe WS
     const topic = `session.${id}`
     topicRef.current = topic
@@ -207,33 +212,23 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     })
     if (!res.ok) throw new Error('create_failed')
     const json = await res.json()
-    setLobby((l) => ({ ...l, sessionId: json.session?.id, created_at: json.session?.created_at, owner_id: json.session?.owner_id, campaigns: json.session?.campaigns, coordinator_code: json.coordinator_code, line_code: json.line_code }))
-    return { id: json.session.id as number, coordinator_code: json.coordinator_code as string, line_code: json.line_code as string }
+    setLobby((l) => ({ ...l, sessionId: json.session?.id, slug: json.session?.slug, created_at: json.session?.created_at, owner_id: json.session?.owner_id, campaigns: json.session?.campaigns, coordinator_code: json.coordinator_code, line_code: json.line_code }))
+    return { id: json.session.id as number, slug: json.session.slug as string, coordinator_code: json.coordinator_code as string, line_code: json.line_code as string }
   }, [authedFetch])
 
   const joinWithCode = useCallback(async (code: string) => {
     if (!accessRef.current) throw new Error('unauthenticated')
-    // Parse id from code: expect "<id>-XXXX"
-    const m = code.trim().match(/^(\d+)-/)
-    let id: number | null = m ? Number.parseInt(m[1], 10) : null
-    let res: Response
-    if (id) {
-      res = await authedFetch(`${API_BASE}/v1/sessions/${id}/join`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code })
-      })
-    } else {
-      res = await authedFetch(`${API_BASE}/v1/sessions/join`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code })
-      })
-    }
+    const res = await authedFetch(`${API_BASE}/v1/sessions/join`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code })
+    })
     if (res.status === 400) throw new Error('invalid')
     if (res.status === 410) throw new Error('ended')
     if (res.status === 403) throw new Error('forbidden')
     if (!res.ok) throw new Error('failed')
     const json = await res.json()
-    id = json.session?.id
+    const id = json.session?.id
     const role: Role = json.role
-    setLobby((l) => ({ ...l, sessionId: id || undefined }))
+    setLobby((l) => ({ ...l, sessionId: id || undefined, slug: json.session?.slug }))
     return { id: id!, role }
   }, [authedFetch])
 

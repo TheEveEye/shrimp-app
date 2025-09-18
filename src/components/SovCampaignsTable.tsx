@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { wsClient } from '../lib/ws';
+import Panel from './ui/Panel';
+import Badge from './ui/Badge';
 
 export type EnrichedCampaign = {
   campaign_id: number;
@@ -196,52 +198,51 @@ export default function SovCampaignsTable({
   if (!connected) {
     const sk = new Array(5).fill(0);
     return (
-      <div className="panel" role="region" aria-label="Sovereignty campaigns">
-        <div className="panel-header">
-          <div className="panel-title">Current campaigns</div>
-          <div className="controls"><span className="muted">connecting…</span></div>
-        </div>
-        <div className="panel-body">
-          <table className="sov-table">
-            <thead>
-              <tr>
-                <th scope="col">System</th>
-                <th scope="col">Constellation</th>
-                <th scope="col">Region</th>
-                <th scope="col">Owner</th>
-                <th scope="col" className="col-adm">ADM</th>
-                <th scope="col">Time</th>
-                <th scope="col">Relative</th>
-                <th scope="col">Score</th>
+      <Panel
+        title="Current campaigns"
+        controls={<span className="muted">connecting…</span>}
+        role="region"
+        ariaLabel="Sovereignty campaigns"
+      >
+        <table className="sov-table">
+          <thead>
+            <tr>
+              <th scope="col">System</th>
+              <th scope="col">Constellation</th>
+              <th scope="col">Region</th>
+              <th scope="col">Owner</th>
+              <th scope="col" className="col-adm">ADM</th>
+              <th scope="col">Time</th>
+              <th scope="col">Relative</th>
+              <th scope="col">Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sk.map((_, i) => (
+              <tr key={i} className="skeleton-row">
+                <td><div className="skeleton" style={{ height: 14, width: 120 }} /></td>
+                <td><div className="skeleton" style={{ height: 14, width: 160 }} /></td>
+                <td><div className="skeleton" style={{ height: 14, width: 140 }} /></td>
+                <td><div className="skeleton" style={{ height: 18, width: 220 }} /></td>
+                <td className="col-adm"><div className="skeleton" style={{ height: 22, width: 86, borderRadius: 9999 }} /></td>
+                <td><div className="skeleton" style={{ height: 14, width: 160 }} /></td>
+                <td><div className="skeleton" style={{ height: 22, width: 120, borderRadius: 9999 }} /></td>
+                <td><div className="skeleton" style={{ height: 14, width: 120 }} /></td>
               </tr>
-            </thead>
-            <tbody>
-              {sk.map((_, i) => (
-                <tr key={i} className="skeleton-row">
-                  <td><div className="skeleton" style={{ height: 14, width: 120 }} /></td>
-                  <td><div className="skeleton" style={{ height: 14, width: 160 }} /></td>
-                  <td><div className="skeleton" style={{ height: 14, width: 140 }} /></td>
-                  <td><div className="skeleton" style={{ height: 18, width: 220 }} /></td>
-                  <td className="col-adm"><div className="skeleton" style={{ height: 22, width: 86, borderRadius: 9999 }} /></td>
-                  <td><div className="skeleton" style={{ height: 14, width: 160 }} /></td>
-                  <td><div className="skeleton" style={{ height: 22, width: 120, borderRadius: 9999 }} /></td>
-                  <td><div className="skeleton" style={{ height: 14, width: 120 }} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
         <div id="live-updates" className="sr-only" aria-live="polite" />
-      </div>
+      </Panel>
     );
   }
 
   if (!rows.length) {
     return (
-      <div className="panel" role="region" aria-label="Sovereignty campaigns">
-        <div className="panel-header">
-          <div className="panel-title">Current campaigns</div>
-          <div className="controls">
+      <Panel
+        title="Current campaigns"
+        controls={(
+          <>
             <button
               type="button"
               className="muted text-button"
@@ -251,22 +252,24 @@ export default function SovCampaignsTable({
             >
               {updatedAgo}
             </button>
-            {snapshot.isStale && <span className="badge warn">STALE</span>}
-          </div>
-        </div>
-        <div className="panel-body" style={{ padding: '24px', textAlign: 'center' }}>
-          <div className="muted">No reinforced hubs found</div>
-        </div>
+            {snapshot.isStale && <Badge variant="warn">STALE</Badge>}
+          </>
+        )}
+        role="region"
+        ariaLabel="Sovereignty campaigns"
+        bodyStyle={{ padding: '24px', textAlign: 'center' }}
+      >
+        <div className="muted">No reinforced hubs found</div>
         <div id="live-updates" className="sr-only" aria-live="polite" />
-      </div>
+      </Panel>
     );
   }
 
   return (
-    <div className="panel" role="region" aria-label="Sovereignty campaigns">
-      <div className="panel-header">
-        <div className="panel-title">Current campaigns</div>
-        <div className="controls">
+    <Panel
+      title="Current campaigns"
+      controls={(
+        <>
           <button
             type="button"
             className="muted text-button"
@@ -276,10 +279,12 @@ export default function SovCampaignsTable({
           >
             {updatedAgo}
           </button>
-          {snapshot.isStale && <span className="badge warn">STALE</span>}
-        </div>
-      </div>
-      <div className="panel-body">
+          {snapshot.isStale && <Badge variant="warn">STALE</Badge>}
+        </>
+      )}
+      role="region"
+      ariaLabel="Sovereignty campaigns"
+    >
       <table className="sov-table">
         <thead>
           <tr>
@@ -382,8 +387,7 @@ export default function SovCampaignsTable({
           })}
         </tbody>
       </table>
-      </div>
       <div id="live-updates" className="sr-only" aria-live="polite" />
-    </div>
+    </Panel>
   );
 }

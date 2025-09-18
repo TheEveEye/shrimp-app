@@ -4,6 +4,9 @@ import { useAuth } from '../auth/AuthContext'
 import { useToast } from './ToastProvider'
 import Icon from './Icon'
 import ConfirmModal from './ConfirmModal'
+import ModalFrame from './ui/ModalFrame'
+import CharacterAvatar from './ui/CharacterAvatar'
+import Badge from './ui/Badge'
 type Props = { open: boolean; onClose: () => void }
 
 type Linked = {
@@ -16,6 +19,7 @@ type Linked = {
   has_waypoint: boolean
   has_online: boolean
   alliance_icon_url?: string | null
+  online?: boolean | null
 }
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
@@ -153,12 +157,15 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
   })()
 
   const node = (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="chars-title" aria-describedby="chars-desc">
-      <div ref={panelRef} className="modal-panel modal-animate-in" style={{ maxWidth: 640 }}>
-        <div className="modal-header">
-          <div id="chars-title" className="modal-title">Manage Characters</div>
-        </div>
-        <div className="modal-body">
+    <ModalFrame
+      ref={panelRef}
+      titleId="chars-title"
+      title="Manage Characters"
+      panelClassName="modal-animate-in"
+      panelStyle={{ maxWidth: 640 }}
+      ariaDescribedBy="chars-desc"
+    >
+      <div className="modal-body">
           <p id="chars-desc" className="muted" style={{ marginTop: 0 }}>Link EVE characters and manage scopes.</p>
           {loading ? <div className="muted">Loading…</div> : null}
           <ul className="mc-list" aria-label="Linked characters">
@@ -172,7 +179,13 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
                 <li key={r.character_id} className="mc-row">
                   <div className="mc-info">
                     <div className="mc-avatars">
-                      <img src={r.portrait_url} width={36} height={36} alt="" aria-hidden="true" style={{ borderRadius: '50%' }} />
+                      <CharacterAvatar
+                        characterId={r.character_id}
+                        portraitUrl={r.portrait_url}
+                        size={36}
+                        showStatus={false}
+                        imageProps={{ alt: '', 'aria-hidden': true, style: { borderRadius: '50%' } }}
+                      />
                     {r.alliance_icon_url ? (
                       <img src={r.alliance_icon_url} width={36} height={36} alt="" aria-hidden="true" style={{ borderRadius: 4, marginTop: 6 }} />
                     ) : null}
@@ -180,10 +193,10 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
                     <div className="mc-meta">
                       <div className="mc-name" title={r.name || undefined}>{r.name ?? `#${r.character_id}`}</div>
                       <div className="mc-scopes">
-                        <Badge label="Location" ok={okLoc} />
-                        <Badge label="Ship" ok={okShip} />
-                        <Badge label="Waypoint" ok={okWp} />
-                        <Badge label="Online" ok={okOn} />
+                        <Badge variant={okLoc ? 'ok' : 'warn'}>Location</Badge>
+                        <Badge variant={okShip ? 'ok' : 'warn'}>Ship</Badge>
+                        <Badge variant={okWp ? 'ok' : 'warn'}>Waypoint</Badge>
+                        <Badge variant={okOn ? 'ok' : 'warn'}>Online</Badge>
                       </div>
                     </div>
                   </div>
@@ -202,13 +215,12 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
             })}
             {rows.length === 0 && !loading ? (<li className="muted">No linked characters yet.</li>) : null}
           </ul>
-        </div>
-        <div className="modal-actions">
+      </div>
+      <div className="modal-actions">
           <button type="button" className="button" onClick={onClose}>Close</button>
           <button type="button" className="button primary" onClick={onLinkNew}>Link new character</button>
-        </div>
       </div>
-    </div>
+    </ModalFrame>
   )
 
   return (
@@ -226,8 +238,4 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
       />
     </>
   )
-}
-
-function Badge({ label, ok }: { label: string; ok: boolean }) {
-  return <span className={`badge ${ok ? 'ok' : 'warn'}`}>{label}</span>
 }
