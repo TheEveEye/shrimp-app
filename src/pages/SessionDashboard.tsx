@@ -175,7 +175,7 @@ export default function SessionDashboard() {
 
   const showCampaignSection = showSkeletons || activeCards.length > 0 || (showCompleted && completedCards.length > 0)
 
-  const sessionLabel = lobby.slug || (lobby.sessionId ? `#${lobby.sessionId}` : 'Session');
+  const sessionLabel = lobby.sessionId ? `#${lobby.sessionId}` : 'Session';
 
   return (
     <div className="dashboard">

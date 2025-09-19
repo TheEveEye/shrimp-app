@@ -131,6 +131,7 @@ function Section({ title, role, code, canManage, members }: { title: string; rol
       <ul className="members-list">
         {members.map((m) => {
           const isSelf = character?.id === m.character_id
+          const isOwner = lobby.owner_id != null && m.character_id === lobby.owner_id
           return (
             <li
               key={m.character_id}
@@ -152,7 +153,14 @@ function Section({ title, role, code, canManage, members }: { title: string; rol
             >
               <div className="left">
                 <Avatar member={m} size={36} />
-                <div className="name" title={m.name || undefined}>{m.name || 'Unknown'}</div>
+                <div className="name" title={m.name || undefined}>
+                  {m.name || 'Unknown'}
+                  {isOwner ? (
+                    <span className="crown-wrap crown-yellow" aria-label="Session owner">
+                      <span className="crown-mask" aria-hidden="true" />
+                    </span>
+                  ) : null}
+                </div>
               </div>
               {m.alliance_icon_url ? (
                 <img src={m.alliance_icon_url} alt="" aria-hidden="true" className="ally-icon" />

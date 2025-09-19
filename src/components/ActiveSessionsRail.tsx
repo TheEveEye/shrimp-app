@@ -78,6 +78,14 @@ export default function ActiveSessionsRail() {
               const creator = s.creator
               const role = s.role
               const chips = (s.campaigns || [])
+              const makeDisplay = (): string => {
+                if (s.display_name && String(s.display_name).trim()) return String(s.display_name)
+                const name = creator?.name?.trim()
+                if (name && /[sS]$/.test(name)) return `${name}' session`
+                if (name) return `${name}'s session`
+                return `Session #${s.id}`
+              }
+              const display = makeDisplay()
               function computeCounts(): { offensive: number; defensive: number; constellations: number } | null {
                 if (s.summary) return s.summary
                 if (!chips.length) return null
@@ -102,11 +110,11 @@ export default function ActiveSessionsRail() {
                   tabIndex={0}
                   onClick={go}
                   onKeyDown={onKey}
-                  aria-label={`Open session ${s.slug || s.id} dashboard`}
+                  aria-label={`Open ${display} dashboard`}
                 >
                   <div className="row top">
                     <div className="left">
-                      <div className="session-label">Session {s.slug || s.id}</div>
+                      <div className="session-label">{display}</div>
                       {role ? (
                         <Badge variant={role === 'coordinator' ? 'ok' : 'default'}>{role}</Badge>
                       ) : null}
