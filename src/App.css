@@ -1,5 +1,5 @@
 /* Layout overrides and navbar styles */
-.main-content { padding-top: 12px; }
+.main-content { padding-top: calc(88px - 64px); }
 
 .navbar { position: sticky; top: 0; z-index: 100; background: var(--panel-elev); border-bottom: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.12); }
 .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }

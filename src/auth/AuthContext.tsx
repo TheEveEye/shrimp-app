@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { createPkcePair } from './pkce'
+import { wsClient } from '../lib/ws'
 
 type Character = {
   id: number
@@ -9,6 +10,7 @@ type Character = {
 
 type AuthContextType = {
   isAuthenticated: boolean
+  isReady: boolean
   accessToken?: string
   idToken?: string
   expiresAt?: number
@@ -17,6 +19,7 @@ type AuthContextType = {
   clearError: () => void
   login: () => Promise<void>
   logout: () => void
+  refresh: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -65,7 +68,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [idToken, setIdToken] = useState<string | undefined>()
   const [expiresAt, setExpiresAt] = useState<number | undefined>()
   const [error, setError] = useState<string | null>(null)
-  const timerRef = useRef<number | null>(null)
+  const [isReady, setIsReady] = useState<boolean>(false)
+  const expiryTimerRef = useRef<number | null>(null)
+  const refreshTimerRef = useRef<number | null>(null)
+  const refreshInFlight = useRef<Promise<boolean> | null>(null)
+  const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
   const character = useMemo(() => characterFromTokens(idToken, accessToken), [idToken, accessToken])
   const isAuthenticated = !!accessToken && !!expiresAt && Date.now() < expiresAt
@@ -80,14 +87,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const scheduleExpiryWatcher = useCallback((expiry: number) => {
-    if (timerRef.current) window.clearTimeout(timerRef.current)
+    if (expiryTimerRef.current) window.clearTimeout(expiryTimerRef.current)
     const ms = Math.max(0, expiry - Date.now())
-    timerRef.current = window.setTimeout(() => {
+    expiryTimerRef.current = window.setTimeout(() => {
       // Token expired; clear and surface a friendly message.
       clearSession()
       setError('Your session expired. Please log in again.')
     }, ms)
   }, [clearSession])
+
+  const scheduleRefresh = useCallback((expiresAt: number) => {
+    if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current)
+    // Refresh 60s before expiry
+    const ms = Math.max(0, expiresAt - 60_000 - Date.now())
+    refreshTimerRef.current = window.setTimeout(() => { void refresh() }, ms)
+  }, [])
 
   // Bootstrap from sessionStorage on mount
   useEffect(() => {
@@ -100,6 +114,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIdToken(stored.id_token)
         setExpiresAt(stored.expires_at)
         scheduleExpiryWatcher(stored.expires_at)
+        scheduleRefresh(stored.expires_at)
+        setIsReady(true)
       } else {
         // Expired or invalid
         clearSession()
@@ -107,7 +123,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       clearSession()
     }
-  }, [clearSession, scheduleExpiryWatcher])
+  }, [clearSession, scheduleExpiryWatcher, scheduleRefresh])
+
+  // On load, if we don't have tokens, try session hydration via cookie
+  useEffect(() => {
+    const run = async () => {
+      if (accessToken) { setIsReady(true); return }
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/session`, { method: 'GET', credentials: 'include' })
+        if (res.ok && res.status !== 204) {
+          const json = await res.json()
+          const expires_at = Date.now() + Math.max(0, json.expires_in - 60) * 1000
+          const payload: StoredTokens = { access_token: json.access_token, expires_at } as any
+          if (json.id_token) (payload as any).id_token = json.id_token
+          sessionStorage.setItem(SS_KEYS.tokens, JSON.stringify(payload))
+          setAccessToken(json.access_token)
+          setIdToken(json.id_token)
+          setExpiresAt(expires_at)
+          scheduleExpiryWatcher(expires_at)
+          scheduleRefresh(expires_at)
+          setIsReady(true)
+        } else {
+          setIsReady(true)
+        }
+      } catch {
+        setIsReady(true)
+      }
+    }
+    run()
+  }, [API_BASE, accessToken, scheduleExpiryWatcher, scheduleRefresh])
+
+  const refresh = useCallback(async (): Promise<boolean> => {
+    if (refreshInFlight.current) return refreshInFlight.current
+    const p = (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/refresh`, { method: 'POST', credentials: 'include' })
+        if (!res.ok) throw new Error('refresh_failed')
+        const json = await res.json()
+        const expires_at = Date.now() + Math.max(0, json.expires_in - 60) * 1000
+        const payload: StoredTokens = { access_token: json.access_token, expires_at } as any
+        if (json.id_token) (payload as any).id_token = json.id_token
+        sessionStorage.setItem(SS_KEYS.tokens, JSON.stringify(payload))
+        setAccessToken(json.access_token)
+        setIdToken(json.id_token)
+        setExpiresAt(expires_at)
+        scheduleExpiryWatcher(expires_at)
+        scheduleRefresh(expires_at)
+        // Re-auth WS
+        if (json.access_token) wsClient.auth(json.access_token)
+        return true
+      } catch (e) {
+        // Clear cookie-based session as well
+        try { await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' }) } catch {}
+        clearSession()
+        setError('Your session has ended. Please log in again.')
+        return false
+      } finally {
+        refreshInFlight.current = null
+      }
+    })()
+    refreshInFlight.current = p
+    return p
+  }, [API_BASE, scheduleExpiryWatcher, scheduleRefresh, clearSession])
 
   const login = useCallback(async () => {
     const ISSUER = import.meta.env.VITE_EVE_SSO_ISSUER || 'https://login.eveonline.com/v2'
@@ -139,15 +216,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const logout = useCallback(() => {
-    clearSession()
-    // Redirect back to landing page
-    window.location.assign('/')
-  }, [clearSession])
+    // Ask server to clear cookie and then clear local state
+    fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' }).finally(() => {
+      clearSession()
+      window.location.assign('/')
+    })
+  }, [API_BASE, clearSession])
 
   const clearError = useCallback(() => setError(null), [])
 
   const value = useMemo<AuthContextType>(() => ({
     isAuthenticated,
+    isReady,
     accessToken,
     idToken,
     expiresAt,
@@ -156,13 +236,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearError,
     login,
     logout,
-  }), [isAuthenticated, accessToken, idToken, expiresAt, character, error, clearError, login, logout])
+    refresh,
+  }), [isAuthenticated, isReady, accessToken, idToken, expiresAt, character, error, clearError, login, logout, refresh])
 
   // Keep expiry watcher in sync when tokens change
   useEffect(() => {
-    if (expiresAt) scheduleExpiryWatcher(expiresAt)
-    return () => { if (timerRef.current) window.clearTimeout(timerRef.current) }
-  }, [expiresAt, scheduleExpiryWatcher])
+    if (expiresAt) {
+      scheduleExpiryWatcher(expiresAt)
+      scheduleRefresh(expiresAt)
+    }
+    return () => {
+      if (expiryTimerRef.current) window.clearTimeout(expiryTimerRef.current)
+      if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current)
+    }
+  }, [expiresAt, scheduleExpiryWatcher, scheduleRefresh])
+
+  // WS: attempt one refresh if we see auth errors
+  useEffect(() => {
+    const off = wsClient.addMessageHandler((msg: any) => {
+      if (msg?.type === 'error' && (msg.code === 'unauthorized' || msg.code === 'auth_invalid')) {
+        void refresh()
+      }
+    })
+    return () => { off() }
+  }, [refresh])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -175,7 +272,8 @@ export function useAuth() {
 
 // Utility used by callback component to store tokens
 export function persistTokens(access_token: string, id_token: string | undefined, expires_in: number) {
-  const expires_at = Date.now() + Math.max(0, expires_in) * 1000
+  // Store slightly shorter expiry to account for refresh window
+  const expires_at = Date.now() + Math.max(0, expires_in - 60) * 1000
   const payload: StoredTokens = { access_token, expires_at }
   if (id_token) (payload as any).id_token = id_token
   sessionStorage.setItem(SS_KEYS.tokens, JSON.stringify(payload))

@@ -3,13 +3,16 @@ import { useEffect, useRef, useState } from 'react'
 import { useTheme } from '../theme/ThemeProvider'
 import { useAuth } from '../auth/AuthContext'
 import Icon from './Icon'
+import Popover from './Popover'
+import ManageCharactersModal from './ManageCharactersModal'
 
 export default function AuthStatus() {
   const { effective } = useTheme()
   const { isAuthenticated, character, login, logout, error, clearError } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement | null>(null)
+  const [manageOpen, setManageOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement | null>(null)
+  const [anchor, setAnchor] = useState<DOMRect | null>(null)
 
   // Theme-aware SSO button asset:
   // Per request: use WHITE on dark theme, BLACK on light theme.
@@ -18,22 +21,7 @@ export default function AuthStatus() {
     : '/eve-sso-login-black-large.png'
 
   useEffect(() => {
-    function handleDocClick(e: MouseEvent) {
-      if (!menuOpen) return
-      const t = e.target as Node
-      if (menuRef.current && !menuRef.current.contains(t) && btnRef.current && !btnRef.current.contains(t)) {
-        setMenuOpen(false)
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setMenuOpen(false)
-    }
-    document.addEventListener('mousedown', handleDocClick)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', handleDocClick)
-      document.removeEventListener('keydown', onKey)
-    }
+    if (menuOpen && btnRef.current) setAnchor(btnRef.current.getBoundingClientRect())
   }, [menuOpen])
 
   if (!isAuthenticated) {
@@ -84,24 +72,17 @@ export default function AuthStatus() {
           </button>
         </>
       ) : null}
-      {menuOpen ? (
-        <div ref={menuRef} role="menu" style={{ position: 'absolute', right: 0, top: 'calc(100% + 10px)', zIndex: 1000 }}>
-          <button
-            role="menuitem"
-            onClick={logout}
-            className="signout-btn"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '8px 12px', borderRadius: 10,
-              background: 'var(--panel)', border: 'none', color: 'inherit', cursor: 'pointer',
-              boxShadow: 'var(--shadow-panel)'
-            }}
-          >
-            <Icon name="signOut" size={16} alt="" />
-            <span>Sign out</span>
-          </button>
-        </div>
-      ) : null}
+      <Popover open={menuOpen} anchorRect={anchor || undefined} onClose={() => setMenuOpen(false)} align="right">
+        <button role="menuitem" onClick={() => { setManageOpen(true); setMenuOpen(false) }} className="menu-item">
+          <Icon name="manageCharacters" size={16} alt="" />
+          <span>Manage Characters</span>
+        </button>
+        <button role="menuitem" onClick={logout} className="menu-item">
+          <Icon name="signOut" size={16} alt="" />
+          <span>Sign out</span>
+        </button>
+      </Popover>
+      <ManageCharactersModal open={manageOpen} onClose={() => setManageOpen(false)} />
     </div>
   )
 }
