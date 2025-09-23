@@ -318,12 +318,12 @@ export default function SovCampaignsTable({
             const below = Math.max(60 - defPct, 0);
             const incAbove = Math.round(above / NODE_PCT - 1e-9); // nodes above 60% (round any fraction up)
             const incBelow = Math.round(below / NODE_PCT - 1e-9); // nodes below 60% (round any fraction up)
-            const attacker_remaining = defPct >= 60
-              ? ATTACKERS_TOTAL + incAbove
-              : Math.max(ATTACKERS_TOTAL - incBelow, 0);
-            const defender_remaining = defPct <= 60
+            const attacker_score = defPct <= 60
               ? DEFENDERS_TOTAL + incBelow
               : Math.max(DEFENDERS_TOTAL - incAbove, 0);
+            const defnder_score = defPct >= 60
+              ? ATTACKERS_TOTAL + incAbove
+              : Math.max(ATTACKERS_TOTAL - incBelow, 0);
             const trClass = rowClassName ? rowClassName(r) : undefined;
             return (
               <tr key={r.campaign_id} tabIndex={0} className={trClass}>
@@ -367,9 +367,9 @@ export default function SovCampaignsTable({
                   <div className="score-wrap">
                     <div className="mono">
                       {defPct}% (
-                      <span className="score-def">{defender_remaining}</span>
+                      <span className="score-def">{defnder_score}</span>
                       /
-                      <span className="score-att">{attacker_remaining}</span>
+                      <span className="score-att">{attacker_score}</span>
                       )
                     </div>
                     <div className={`score-bar${snapshot.isStale ? ' stale' : ''}`}>

@@ -44,10 +44,10 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
   const below = Math.max(60 - effectiveDefPct, 0)
   const incAbove = Math.round(above / NODE_PCT - 1e-9)
   const incBelow = Math.round(below / NODE_PCT - 1e-9)
-  const attacker_remaining = effectiveDefPct >= 60
+  const attacker_score = effectiveDefPct >= 60
     ? ATTACKERS_TOTAL + incAbove
     : Math.max(ATTACKERS_TOTAL - incBelow, 0)
-  const defender_remaining = effectiveDefPct <= 60
+  const defnder_score = effectiveDefPct <= 60
     ? DEFENDERS_TOTAL + incBelow
     : Math.max(DEFENDERS_TOTAL - incAbove, 0)
 
@@ -68,7 +68,7 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
     ? completedStatus === 'unknown'
       ? `Completed campaign for ${sys}${reg ? ' in ' + reg : ''}. Status unknown.`
       : `Completed campaign for ${sys}${reg ? ' in ' + reg : ''}. ${completedStatus === 'defense' ? 'Defenders' : 'Attackers'} secured the objective.`
-    : `Sovereignty campaign for ${sys}${reg ? ' in ' + reg : ''}. ETA ${eta}. Score ${defender_remaining} defender / ${attacker_remaining} attacker remaining.`
+    : `Sovereignty campaign for ${sys}${reg ? ' in ' + reg : ''}. ETA ${eta}. Score ${defnder_score} defender / ${attacker_score} attacker remaining.`
 
   const segs = useMemo(() => {
     if (completedStatus === 'unknown') {
@@ -88,8 +88,8 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
   if (isStale) cardClass.push('stale')
   if (completedStatus === 'unknown') cardClass.push('completed-unknown')
   const showCompletedLabel = completedStatus === 'unknown'
-  const displayDefenderRemaining = showCompletedLabel ? 0 : defender_remaining
-  const displayAttackerRemaining = showCompletedLabel ? 0 : attacker_remaining
+  const displayDefenderRemaining = showCompletedLabel ? 0 : defnder_score
+  const displayAttackerRemaining = showCompletedLabel ? 0 : attacker_score
 
   return (
     <section className={cardClass.join(' ')} aria-label={ariaLabel}>
@@ -137,7 +137,7 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
         </div>
       </div>
       <div className="sr-only">
-        {`ETA ${eta}. Defender remaining ${defender_remaining}, attacker remaining ${attacker_remaining}.`}
+        {`ETA ${eta}. Defender remaining ${defnder_score}, attacker remaining ${attacker_score}.`}
         {dotlanUrl ? ` Link to system ${sys} in region ${reg}.` : ''}
       </div>
     </section>
