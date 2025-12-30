@@ -20,6 +20,7 @@ type ServerMessage =
   | { type: 'presence.left'; topic: string; character_id: number }
   | { type: 'presence.heartbeat'; topic: string; ts: number }
   | { type: 'member.kicked'; topic: string; character_id: number }
+  | { type: 'member.left'; topic: string; character_id: number }
   | { type: 'codes.rotated'; topic: string; role: 'coordinator' | 'line'; rotated_at: number }
   | { type: 'session.ended'; topic: string }
   | { type: 'session.forced_leave' }

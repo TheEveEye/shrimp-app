@@ -10,6 +10,8 @@ import { useAuth } from '../auth/AuthContext'
 import ToastersPanel from '../components/ToastersPanel'
 import Panel from '../components/ui/Panel'
 import Icon from '../components/Icon'
+import ConfirmModal from '../components/ConfirmModal'
+import { useToast } from '../components/ToastProvider'
 
 type Snapshot = {
   timestamp: number
@@ -20,8 +22,13 @@ type Snapshot = {
 export default function SessionDashboard() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { lobby, openLobby } = useSessions()
-  const { isReady, isAuthenticated } = useAuth()
+  const { lobby, openLobby, endSession, leaveSession, fetchActiveSessions } = useSessions()
+  const { isReady, isAuthenticated, character } = useAuth()
+  const { toast } = useToast()
+  const [confirmEndOpen, setConfirmEndOpen] = useState(false)
+  const [ending, setEnding] = useState(false)
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false)
+  const [leaving, setLeaving] = useState(false)
 
   // Open the session WS (presence + metadata)
   useEffect(() => {
@@ -103,7 +110,7 @@ export default function SessionDashboard() {
   // Redirect to home if I am forced to leave (e.g., kicked)
   useEffect(() => {
     const remove = wsClient.addMessageHandler((msg: any) => {
-      if (msg?.type === 'session.forced_leave') {
+      if (msg?.type === 'session.forced_leave' || msg?.type === 'session.ended') {
         nav('/')
       }
     })
@@ -176,20 +183,37 @@ export default function SessionDashboard() {
   const showCampaignSection = showSkeletons || activeCards.length > 0 || (showCompleted && completedCards.length > 0)
 
   const sessionLabel = lobby.sessionId ? `#${lobby.sessionId}` : 'Session';
+  const isOwner = !!character && lobby.owner_id === character.id
+  const canLeave = !!lobby.sessionId && !isOwner
+  const showActions = canLeave || isOwner || (hasCompleted && !showCompleted)
 
   return (
     <div className="dashboard">
       <div className="dashboard-heading">
         <h1 className="dashboard-title">Session {sessionLabel}</h1>
-        {hasCompleted && !showCompleted ? (
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Show completed campaigns"
-            onClick={() => setShowCompleted(true)}
-          >
-            <Icon name="ellipsis" size={16} alt="" />
-          </button>
+        {showActions ? (
+          <div className="dashboard-actions">
+            {hasCompleted && !showCompleted ? (
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Show completed campaigns"
+                onClick={() => setShowCompleted(true)}
+              >
+                <Icon name="ellipsis" size={16} alt="" />
+              </button>
+            ) : null}
+            {isOwner ? (
+              <button type="button" className="button danger" onClick={() => setConfirmEndOpen(true)}>
+                End session
+              </button>
+            ) : null}
+            {canLeave ? (
+              <button type="button" className="button" onClick={() => setConfirmLeaveOpen(true)}>
+                Leave session
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
         {/* CampaignBars section */}
@@ -231,6 +255,56 @@ export default function SessionDashboard() {
         <ToastersPanel sessionId={Number(id)} />
       ) : null}
       <MembersSidebar />
+      <ConfirmModal
+        open={confirmEndOpen}
+        title="End this session?"
+        message="This ends the session for everyone and removes it from active lists. This can't be undone."
+        confirmText={ending ? 'Ending...' : 'End session'}
+        cancelText="Cancel"
+        variant="danger"
+        onCancel={() => { if (!ending) setConfirmEndOpen(false) }}
+        onConfirm={async () => {
+          if (ending) return
+          setEnding(true)
+          try {
+            await endSession()
+            await fetchActiveSessions()
+            setConfirmEndOpen(false)
+            nav('/')
+          } catch (err: any) {
+            const code = err?.message || ''
+            if (code === 'forbidden') toast('Only the host can end this session.', 'error')
+            else toast('Failed to end session.', 'error')
+          } finally {
+            setEnding(false)
+          }
+        }}
+      />
+      <ConfirmModal
+        open={confirmLeaveOpen}
+        title="Leave this session?"
+        message="You'll be removed from the session and returned to home."
+        confirmText={leaving ? 'Leaving...' : 'Leave session'}
+        cancelText="Stay"
+        onCancel={() => { if (!leaving) setConfirmLeaveOpen(false) }}
+        onConfirm={async () => {
+          if (leaving) return
+          setLeaving(true)
+          try {
+            await leaveSession()
+            await fetchActiveSessions()
+            setConfirmLeaveOpen(false)
+            nav('/')
+          } catch (err: any) {
+            const code = err?.message || ''
+            if (code === 'owner_must_end') toast('Hosts must end the session instead.', 'error')
+            else if (code === 'forbidden') toast("You can't leave this session.", 'error')
+            else toast('Failed to leave session.', 'error')
+          } finally {
+            setLeaving(false)
+          }
+        }}
+      />
     </div>
   )
 }

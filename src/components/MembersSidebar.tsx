@@ -156,7 +156,7 @@ function Section({ title, role, code, canManage, members }: { title: string; rol
                 <div className="name" title={m.name || undefined}>
                   {m.name || 'Unknown'}
                   {isOwner ? (
-                    <span className="crown-wrap crown-yellow" aria-label="Session owner">
+                    <span className="crown-wrap crown-yellow" aria-label="Session owner" title="Session owner">
                       <span className="crown-mask" aria-hidden="true" />
                     </span>
                   ) : null}

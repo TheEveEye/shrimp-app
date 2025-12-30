@@ -47,6 +47,7 @@ type Ctx = {
   kick: (character_id: number) => Promise<void>
   kickMember: (sessionId: number, character_id: number) => Promise<void>
   endSession: () => Promise<void>
+  leaveSession: () => Promise<void>
   setRole: (character_id: number, role: Role) => Promise<void>
   setMemberRole: (sessionId: number, character_id: number, role: Role) => Promise<void>
 }
@@ -123,6 +124,10 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
         setLobby((l) => ({ ...l, members: l.members.map(m => m.character_id === raw.character_id ? { ...m, online: false } : m) }))
         const u = membersRef.current.find(m => m.character_id === raw.character_id)
         if (u) toast(`${u.name || 'Member'} left`)
+      } else if (raw?.type === 'member.left') {
+        const u = membersRef.current.find(m => m.character_id === raw.character_id)
+        if (u && u.online !== false) toast(`${u.name || 'Member'} left`)
+        setLobby((l) => ({ ...l, members: l.members.filter(m => m.character_id !== raw.character_id) }))
       } else if (raw?.type === 'codes.rotated') {
         // Informational; show to coordinators
         const me = membersRef.current.find(m => m.character_id === character?.id)
@@ -272,6 +277,17 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     if (!res.ok) throw new Error('failed')
   }, [authedFetch, lobby.sessionId])
 
+  const leaveSession = useCallback(async () => {
+    if (!accessRef.current || !lobby.sessionId) throw new Error('unauthenticated')
+    const res = await authedFetch(`${API_BASE_URL}/v1/sessions/${lobby.sessionId}/leave`, { method: 'POST' })
+    if (res.status === 403) throw new Error('forbidden')
+    if (res.status === 410) throw new Error('ended')
+    if (res.status === 404) throw new Error('not_found')
+    if (res.status === 400) throw new Error('owner_must_end')
+    if (!res.ok) throw new Error('failed')
+    closeLobby()
+  }, [authedFetch, lobby.sessionId, closeLobby])
+
   const setRole = useCallback(async (character_id: number, role: Role) => {
     if (!accessRef.current || !lobby.sessionId) throw new Error('unauthenticated')
     const res = await authedFetch(`${API_BASE_URL}/v1/sessions/${lobby.sessionId}/role`, {
@@ -315,9 +331,10 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     kick,
     kickMember,
     endSession,
+    leaveSession,
     setRole,
     setMemberRole,
-  }), [lobby, activeSessions, activeSessionsLoading, fetchActiveSessions, openLobby, closeLobby, createSession, joinWithCode, rotateCode, kick, kickMember, endSession, setRole, setMemberRole])
+  }), [lobby, activeSessions, activeSessionsLoading, fetchActiveSessions, openLobby, closeLobby, createSession, joinWithCode, rotateCode, kick, kickMember, endSession, leaveSession, setRole, setMemberRole])
 
   return (
     <SessionsContext.Provider value={value}>{children}</SessionsContext.Provider>
