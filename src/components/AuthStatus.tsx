@@ -48,10 +48,10 @@ export default function AuthStatus() {
 
   // Account display: name on left, avatar on right (avatar toggles menu)
   return (
-    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div className="nav-auth-status">
       {character ? (
         <>
-          <span style={{ fontSize: 14, fontWeight: 500 }}>
+          <span className="nav-auth-name">
             {character.name ?? `Character #${character.id}`}
           </span>
           <button
@@ -60,19 +60,19 @@ export default function AuthStatus() {
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             title={character.name ? `${character.name} account menu` : 'Account menu'}
-            style={{ padding: 0, margin: 0, border: 'none', background: 'transparent', cursor: 'pointer', lineHeight: 0 }}
+            className={`nav-avatar-btn${menuOpen ? ' open' : ''}`}
           >
             <img
               src={character.portrait}
               width={36}
               height={36}
               alt={character.name ? `${character.name} portrait` : 'Character portrait'}
-              style={{ borderRadius: '50%' }}
+              className="nav-avatar"
             />
           </button>
         </>
       ) : null}
-      <Popover open={menuOpen} anchorRect={anchor || undefined} onClose={() => setMenuOpen(false)} align="right">
+      <Popover open={menuOpen} anchorRect={anchor || undefined} onClose={() => setMenuOpen(false)} align="right" offset={10} className="account-menu-popover">
         <button role="menuitem" onClick={() => { setManageOpen(true); setMenuOpen(false) }} className="menu-item">
           <Icon name="manageCharacters" size={16} alt="" />
           <span>Manage Characters</span>

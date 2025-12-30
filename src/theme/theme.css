@@ -339,6 +339,11 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 .member-actions { grid-column: 1 / -1; display: none; }
 .member-menu { display: none; }
 .menu-popover { background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow-panel); border-radius: 10px; padding: 6px; }
+.account-menu-popover { min-width: 220px; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, var(--panel-elev), var(--panel)); box-shadow: 0 18px 40px rgba(0,0,0,0.35), 0 6px 16px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 4px; transform-origin: calc(100% - 20px) 0; animation: accountMenuIn 170ms cubic-bezier(0.16, 1, 0.3, 1); }
+.account-menu-popover::before { content: ''; position: absolute; top: -6px; right: 20px; width: 12px; height: 12px; background: var(--panel-elev); border-left: 1px solid var(--border); border-top: 1px solid var(--border); transform: rotate(45deg); }
+.account-menu-popover .menu-item { width: 100%; justify-content: flex-start; gap: 10px; padding: 10px 12px; font-size: 14px; }
+.account-menu-popover .menu-item:hover, .account-menu-popover .menu-item:focus-visible { background: linear-gradient(90deg, var(--chip-bg), transparent); }
+.account-menu-popover .menu-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-weak) inset; }
 .menu-item { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; background: transparent; border: none; color: inherit; cursor: pointer; }
 .menu-item.danger { color: var(--danger); }
 .menu-item:hover { background: var(--chip-bg); }
@@ -364,6 +369,8 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 /* Modal entrance animation */
 .modal-animate-in { animation: modalIn 140ms ease-out; transform-origin: 50% 40%; }
 @keyframes modalIn { from { opacity: 0.001; transform: scale(0.985); } to { opacity: 1; transform: scale(1); } }
+@keyframes accountMenuIn { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .account-menu-popover { animation: none; } }
 
 /* Small button spinner */
 .spinner { display: inline-block; border-radius: 999px; border: 2px solid transparent; border-top-color: currentColor; animation: spin 1s linear infinite; }

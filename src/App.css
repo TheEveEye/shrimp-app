@@ -6,6 +6,16 @@
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 1px; }
 .brand-logo { width: 28px; height: 28px; display: block; }
 .brand:hover, .brand:focus-visible { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: var(--accent-underline-thickness); text-underline-offset: 3px; }
+.nav-auth-status { position: relative; display: flex; align-items: center; gap: 10px; }
+.nav-auth-name { font-size: 14px; font-weight: 500; }
+.nav-avatar-btn { position: relative; padding: 0; margin: 0; border: 0; background: transparent; cursor: pointer; line-height: 0; border-radius: 999px; }
+.nav-avatar-btn::after { content: ''; position: absolute; inset: -3px; border-radius: 999px; border: 1px solid transparent; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.nav-avatar-btn:hover::after { border-color: var(--border); }
+.nav-avatar-btn:focus-visible { outline: none; }
+.nav-avatar-btn:focus-visible::after, .nav-avatar-btn.open::after { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+.nav-avatar { display: block; border-radius: 50%; transition: transform 160ms ease; }
+.nav-avatar-btn.open .nav-avatar { transform: scale(1.03); }
+.nav-avatar-btn:active .nav-avatar { transform: scale(0.98); }
 
 .page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .title { margin: 0; font-size: 22px; font-weight: 600; }

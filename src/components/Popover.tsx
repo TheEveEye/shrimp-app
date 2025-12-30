@@ -8,9 +8,10 @@ type Props = {
   children: React.ReactNode
   align?: 'left' | 'right'
   offset?: number
+  className?: string
 }
 
-export default function Popover({ open, anchorRect, onClose, children, align = 'right', offset = 8 }: Props) {
+export default function Popover({ open, anchorRect, onClose, children, align = 'right', offset = 8, className }: Props) {
   const ref = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -42,9 +43,10 @@ export default function Popover({ open, anchorRect, onClose, children, align = '
   const style: React.CSSProperties = align === 'right'
     ? { ...base, right: Math.max(8, Math.round(window.innerWidth - anchorRect.right)) }
     : { ...base, left: Math.max(8, Math.round(anchorRect.left)) }
+  const rootClass = className ? `menu-popover ${className}` : 'menu-popover'
 
   return createPortal(
-    <div ref={ref} className="menu-popover" style={style} role="menu">
+    <div ref={ref} className={rootClass} style={style} role="menu">
       {children}
     </div>,
     document.body,
