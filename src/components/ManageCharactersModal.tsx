@@ -7,6 +7,7 @@ import ConfirmModal from './ConfirmModal'
 import ModalFrame from './ui/ModalFrame'
 import CharacterAvatar from './ui/CharacterAvatar'
 import Badge from './ui/Badge'
+import { API_BASE_URL } from '../lib/api'
 type Props = { open: boolean; onClose: () => void }
 
 type Linked = {
@@ -21,8 +22,6 @@ type Linked = {
   alliance_icon_url?: string | null
   online?: boolean | null
 }
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 export default function ManageCharactersModal({ open, onClose }: Props) {
   const { accessToken, character } = useAuth()
@@ -46,7 +45,7 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
     if (!accessToken) return
     setLoading(true)
     try {
-      const res = await authedFetch(`${API_BASE}/api/characters/linked`)
+      const res = await authedFetch(`${API_BASE_URL}/api/characters/linked`)
       if (!res.ok) throw new Error('failed')
       const json = await res.json()
       setRows(json.characters || [])
@@ -64,7 +63,7 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
     if (!open || !character) return
     const headers = new Headers()
     if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
-    fetch(`${API_BASE}/api/characters/${character.id}/affiliation`, { headers, credentials: 'include' })
+    fetch(`${API_BASE_URL}/api/characters/${character.id}/affiliation`, { headers, credentials: 'include' })
       .then(res => res.ok ? (res.json() as Promise<{ alliance_icon_url?: string | null }>) : Promise.resolve({} as { alliance_icon_url?: string | null }))
       .then(json => setMainAllyIcon(json?.alliance_icon_url ?? null))
       .catch(() => setMainAllyIcon(null))
@@ -121,14 +120,14 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
     window.addEventListener('message', onMsg)
   }
 
-  const onLinkNew = () => openPopup(`${API_BASE}/api/auth/link/start`)
-  const onReconsent = (id: number) => openPopup(`${API_BASE}/api/auth/link/start?character_id=${id}`)
+  const onLinkNew = () => openPopup(`${API_BASE_URL}/api/auth/link/start`)
+  const onReconsent = (id: number) => openPopup(`${API_BASE_URL}/api/auth/link/start?character_id=${id}`)
 
   const doUnlink = async (id: number) => {
     if (!accessToken) return
     setBusyId(id)
     try {
-      const res = await authedFetch(`${API_BASE}/api/characters/${id}/unlink`, { method: 'POST' })
+      const res = await authedFetch(`${API_BASE_URL}/api/characters/${id}/unlink`, { method: 'POST' })
       if (res.ok) { toast('Unlinked', 'success'); void load() }
       else toast('Failed to unlink', 'error')
     } finally { setBusyId(null) }

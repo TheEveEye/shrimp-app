@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { createPkcePair } from './pkce'
 import { wsClient } from '../lib/ws'
+import { API_BASE_URL } from '../lib/api'
 
 type Character = {
   id: number
@@ -72,7 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const expiryTimerRef = useRef<number | null>(null)
   const refreshTimerRef = useRef<number | null>(null)
   const refreshInFlight = useRef<Promise<boolean> | null>(null)
-  const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
   const character = useMemo(() => characterFromTokens(idToken, accessToken), [idToken, accessToken])
   const isAuthenticated = !!accessToken && !!expiresAt && Date.now() < expiresAt
@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const run = async () => {
       if (accessToken) { setIsReady(true); return }
       try {
-        const res = await fetch(`${API_BASE}/api/auth/session`, { method: 'GET', credentials: 'include' })
+        const res = await fetch(`${API_BASE_URL}/api/auth/session`, { method: 'GET', credentials: 'include' })
         if (res.ok && res.status !== 204) {
           const json = await res.json()
           const expires_at = Date.now() + Math.max(0, json.expires_in - 60) * 1000
@@ -151,13 +151,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     run()
-  }, [API_BASE, accessToken, scheduleExpiryWatcher, scheduleRefresh])
+  }, [accessToken, scheduleExpiryWatcher, scheduleRefresh])
 
   const refresh = useCallback(async (): Promise<boolean> => {
     if (refreshInFlight.current) return refreshInFlight.current
     const p = (async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/auth/refresh`, { method: 'POST', credentials: 'include' })
+        const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, { method: 'POST', credentials: 'include' })
         if (!res.ok) throw new Error('refresh_failed')
         const json = await res.json()
         const expires_at = Date.now() + Math.max(0, json.expires_in - 60) * 1000
@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return true
       } catch (e) {
         // Clear cookie-based session as well
-        try { await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' }) } catch {}
+        try { await fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' }) } catch {}
         clearSession()
         setError('Your session has ended. Please log in again.')
         return false
@@ -184,7 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })()
     refreshInFlight.current = p
     return p
-  }, [API_BASE, scheduleExpiryWatcher, scheduleRefresh, clearSession])
+  }, [scheduleExpiryWatcher, scheduleRefresh, clearSession])
 
   const login = useCallback(async () => {
     const ISSUER = import.meta.env.VITE_EVE_SSO_ISSUER || 'https://login.eveonline.com/v2'
@@ -217,11 +217,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     // Ask server to clear cookie and then clear local state
-    fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' }).finally(() => {
+    fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' }).finally(() => {
       clearSession()
       window.location.assign('/')
     })
-  }, [API_BASE, clearSession])
+  }, [clearSession])
 
   const clearError = useCallback(() => setError(null), [])
 

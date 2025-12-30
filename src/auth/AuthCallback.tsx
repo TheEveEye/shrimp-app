@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { clearPkce, persistTokens, popPkceState } from './AuthContext'
+import { API_BASE_URL } from '../lib/api'
 
 type TokenResponse = {
   access_token: string
@@ -27,8 +28,7 @@ export default function AuthCallback() {
       // Link flow: if state begins with "link:", this callback is for popup character linking.
       // Hand off to server which holds PKCE verifier and stores refresh tokens server-side.
       if (state.startsWith('link:')) {
-        const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
-        const url = new URL(`${API_BASE}/api/auth/link/callback`)
+        const url = new URL(`${API_BASE_URL}/api/auth/link/callback`)
         if (code) url.searchParams.set('code', code)
         url.searchParams.set('state', state)
         window.location.replace(url.toString())
@@ -42,11 +42,9 @@ export default function AuthCallback() {
         return
       }
 
-      const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
-
       try {
         const REDIRECT_URI = import.meta.env.VITE_EVE_REDIRECT_URI
-        const res = await fetch(`${API_BASE}/api/auth/exchange`, {
+        const res = await fetch(`${API_BASE_URL}/api/auth/exchange`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

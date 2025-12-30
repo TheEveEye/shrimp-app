@@ -1,3 +1,5 @@
+import { API_BASE_URL } from './api';
+
 type Message =
   | { type: 'auth'; token?: string; requestId?: string }
   | { type: 'subscribe'; topic: string; lastVersion?: number; requestId?: string }
@@ -26,8 +28,6 @@ type ServerMessage =
   | { type: 'toaster.detached'; topic: string; character_id: number }
   | { type: 'toaster.location_updated'; topic: string; character_id: number; system_id?: number; ship_type_id?: number; ship_type_name?: string; online?: boolean; last_seen_at?: number }
   | { type: 'toaster.updated'; topic: string; character_id: number; entosis_tier: 't1' | 't2' };
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 function toWsUrl(httpUrl: string): string {
   const u = new URL(httpUrl);
@@ -141,4 +141,4 @@ class WSClient {
   }
 }
 
-export const wsClient = new WSClient(toWsUrl(API_BASE));
+export const wsClient = new WSClient(toWsUrl(API_BASE_URL));

@@ -7,6 +7,7 @@ import ModalFrame from './ui/ModalFrame'
 import CharacterAvatar from './ui/CharacterAvatar'
 import CharacterRow from './ui/CharacterRow'
 import TierToggle from './ui/TierToggle'
+import { API_BASE_URL } from '../lib/api'
 
 type LinkedItem = {
   character_id: number
@@ -32,7 +33,6 @@ export default function AddToasterModal({ open, onClose, onAdd, attachedIds }: {
   const selectBtnRef = useRef<HTMLButtonElement | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [anchor, setAnchor] = useState<DOMRect | null>(null)
-  const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
   const [mainAllyIcon, setMainAllyIcon] = useState<string | null>(null)
 
   useEffect(() => {
@@ -40,23 +40,23 @@ export default function AddToasterModal({ open, onClose, onAdd, attachedIds }: {
     setLoading(true)
     const headers: Record<string, string> = {}
     if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-    fetch(`${API_BASE}/api/characters/linked`, { credentials: 'include', headers })
+    fetch(`${API_BASE_URL}/api/characters/linked`, { credentials: 'include', headers })
       .then(async (res) => res.ok ? (await res.json()).characters as LinkedItem[] : [])
       .then((arr) => setRows(arr))
       .catch(() => setRows([]))
       .finally(() => setLoading(false))
-  }, [open, API_BASE, accessToken])
+  }, [open, accessToken])
 
   // Fetch affiliation for main if needed
   useEffect(() => {
     if (!open || !me) return
     const headers: Record<string, string> = {}
     if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-    fetch(`${API_BASE}/api/characters/${me.id}/affiliation`, { credentials: 'include', headers })
+    fetch(`${API_BASE_URL}/api/characters/${me.id}/affiliation`, { credentials: 'include', headers })
       .then(res => res.ok ? (res.json() as Promise<{ alliance_icon_url?: string | null }>) : Promise.resolve({} as { alliance_icon_url?: string | null }))
       .then((json) => setMainAllyIcon(json?.alliance_icon_url ?? null))
       .catch(() => setMainAllyIcon(null))
-  }, [open, me?.id, API_BASE, accessToken])
+  }, [open, me?.id, accessToken])
 
   const available = useMemo(() => {
     let list = rows.slice()

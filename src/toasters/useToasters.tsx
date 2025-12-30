@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { wsClient } from '../lib/ws'
+import { API_BASE_URL } from '../lib/api'
 
 export type Toaster = {
   character_id: number
@@ -20,7 +21,6 @@ export function useToasters(sessionId: number) {
   const { accessToken } = useAuth()
   const [items, setItems] = useState<Toaster[]>([])
   const [loading, setLoading] = useState(false)
-  const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
   const fetchAll = useCallback(async () => {
     if (!sessionId) return
@@ -28,7 +28,7 @@ export function useToasters(sessionId: number) {
     try {
       const headers: Record<string, string> = {}
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-      const res = await fetch(`${API_BASE}/v1/sessions/${sessionId}/toasters`, { credentials: 'include', headers })
+      const res = await fetch(`${API_BASE_URL}/v1/sessions/${sessionId}/toasters`, { credentials: 'include', headers })
       if (!res.ok) { setItems([]); return }
       const json = await res.json()
       const rows = (json.toasters || []) as Toaster[]
@@ -36,7 +36,7 @@ export function useToasters(sessionId: number) {
     } finally {
       setLoading(false)
     }
-  }, [sessionId, API_BASE, accessToken])
+  }, [sessionId, accessToken])
 
   // WS integration
   useEffect(() => {
@@ -65,7 +65,7 @@ export function useToasters(sessionId: number) {
   const attach = useCallback(async (character_id: number, entosis_tier: 't1'|'t2') => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-    const res = await fetch(`${API_BASE}/v1/sessions/${sessionId}/toasters`, {
+    const res = await fetch(`${API_BASE_URL}/v1/sessions/${sessionId}/toasters`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ character_id, entosis_tier }),
@@ -76,27 +76,27 @@ export function useToasters(sessionId: number) {
     const json = await res.json()
     const t = (json.toaster || (json as any).toaster) as Toaster | undefined
     if (t) setItems((prev) => prev.find((x) => x.character_id === t.character_id) ? prev : [...prev, t])
-  }, [API_BASE, sessionId, accessToken])
+  }, [sessionId, accessToken])
 
   const detach = useCallback(async (character_id: number) => {
     const headers: Record<string, string> = {}
     if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-    const res = await fetch(`${API_BASE}/v1/sessions/${sessionId}/toasters/${character_id}`, { method: 'DELETE', credentials: 'include', headers })
+    const res = await fetch(`${API_BASE_URL}/v1/sessions/${sessionId}/toasters/${character_id}`, { method: 'DELETE', credentials: 'include', headers })
     if (!res.ok) throw new Error('failed')
     setItems((prev) => prev.filter((x) => x.character_id !== character_id))
-  }, [API_BASE, sessionId, accessToken])
+  }, [sessionId, accessToken])
 
   const updateTier = useCallback(async (character_id: number, entosis_tier: 't1' | 't2') => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-    const res = await fetch(`${API_BASE}/v1/sessions/${sessionId}/toasters/${character_id}`, {
+    const res = await fetch(`${API_BASE_URL}/v1/sessions/${sessionId}/toasters/${character_id}`, {
       method: 'PATCH', headers, credentials: 'include', body: JSON.stringify({ entosis_tier })
     })
     if (!res.ok) throw new Error('failed')
     const json = await res.json()
     const t = (json.toaster || (json as any).toaster) as Toaster | undefined
     if (t) setItems((prev) => prev.map((x) => x.character_id === character_id ? ({ ...x, entosis_tier: t.entosis_tier }) : x))
-  }, [API_BASE, sessionId, accessToken])
+  }, [sessionId, accessToken])
 
   const sorted = useMemo(() => {
     const arr = [...items]

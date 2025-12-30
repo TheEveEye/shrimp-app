@@ -2,8 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { wsClient } from '../lib/ws'
 import { useAuth } from '../auth/AuthContext'
 import { useToast } from '../components/ToastProvider'
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+import { API_BASE_URL } from '../lib/api'
 
 type Role = 'coordinator' | 'line'
 
@@ -114,7 +113,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
           // unknown member joined; refetch snapshot
           const sid = topicRef.current ? Number.parseInt(topicRef.current.split('.')[1] || '', 10) : undefined
           if (sid && accessRef.current) {
-            authedFetch(`${API_BASE}/v1/sessions/${sid}`)
+            authedFetch(`${API_BASE_URL}/v1/sessions/${sid}`)
               .then(r => r && r.ok ? r.json() : null)
               .then(json => { if (json) setLobby((l) => ({ ...l, members: json.members || [], coordinator_code: json.coordinator_code || l.coordinator_code, line_code: json.line_code || l.line_code })) })
               .catch(() => {})
@@ -160,7 +159,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated || !accessRef.current) { setActiveSessions([]); return }
     setActiveSessionsLoading(true)
     try {
-      const res = await authedFetch(`${API_BASE}/v1/me/sessions?status=active`)
+      const res = await authedFetch(`${API_BASE_URL}/v1/me/sessions?status=active`)
       if (!res.ok) { setActiveSessions([]); return }
       const json = await res.json()
       const rows = (json.sessions || []) as ActiveSessionTile[]
@@ -178,7 +177,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
   const openLobby = useCallback(async (id: number) => {
     if (!isAuthenticated || !accessRef.current) throw new Error('unauthenticated')
     // Fetch snapshot first
-    const res = await authedFetch(`${API_BASE}/v1/sessions/${id}`)
+    const res = await authedFetch(`${API_BASE_URL}/v1/sessions/${id}`)
     if (res.status === 410) throw new Error('ended')
     if (res.status === 403) throw new Error('forbidden')
     if (res.status === 404) throw new Error('not_found')
@@ -200,7 +199,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
 
   const createSession = useCallback(async (items: Array<{ campaign_id: number; side: 'offense' | 'defense' }>) => {
     if (!accessRef.current) throw new Error('unauthenticated')
-    const res = await authedFetch(`${API_BASE}/v1/sessions`, {
+    const res = await authedFetch(`${API_BASE_URL}/v1/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ campaigns: items }),
@@ -213,7 +212,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
 
   const joinWithCode = useCallback(async (code: string) => {
     if (!accessRef.current) throw new Error('unauthenticated')
-    const res = await authedFetch(`${API_BASE}/v1/sessions/join`, {
+    const res = await authedFetch(`${API_BASE_URL}/v1/sessions/join`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code })
     })
     if (res.status === 400) throw new Error('invalid')
@@ -229,7 +228,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
 
   const rotateCode = useCallback(async (role: Role) => {
     if (!accessRef.current || !lobby.sessionId) throw new Error('unauthenticated')
-    const res = await authedFetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/codes/rotate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) })
+    const res = await authedFetch(`${API_BASE_URL}/v1/sessions/${lobby.sessionId}/codes/rotate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) })
     if (res.status === 403) throw new Error('forbidden')
     if (res.status === 410) throw new Error('ended')
     if (!res.ok) throw new Error('failed')
@@ -240,7 +239,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
 
   const kick = useCallback(async (character_id: number) => {
     if (!accessRef.current || !lobby.sessionId) throw new Error('unauthenticated')
-    const res = await authedFetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/kick`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character_id }) })
+    const res = await authedFetch(`${API_BASE_URL}/v1/sessions/${lobby.sessionId}/kick`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character_id }) })
     if (res.status === 403) throw new Error('forbidden')
     if (!res.ok) throw new Error('failed')
   }, [authedFetch, lobby.sessionId])
@@ -252,7 +251,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     // optimistic remove
     setLobby((l) => ({ ...l, members: l.members.filter(m => m.character_id !== character_id) }))
     try {
-      const res = await authedFetch(`${API_BASE}/v1/sessions/${sessionId}/kick`, {
+      const res = await authedFetch(`${API_BASE_URL}/v1/sessions/${sessionId}/kick`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character_id })
       })
       if (res.status === 403) { toast("You don't have permission for that action.", 'error'); throw new Error('forbidden') }
@@ -268,14 +267,14 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
 
   const endSession = useCallback(async () => {
     if (!accessRef.current || !lobby.sessionId) throw new Error('unauthenticated')
-    const res = await authedFetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/end`, { method: 'POST' })
+    const res = await authedFetch(`${API_BASE_URL}/v1/sessions/${lobby.sessionId}/end`, { method: 'POST' })
     if (res.status === 403) throw new Error('forbidden')
     if (!res.ok) throw new Error('failed')
   }, [authedFetch, lobby.sessionId])
 
   const setRole = useCallback(async (character_id: number, role: Role) => {
     if (!accessRef.current || !lobby.sessionId) throw new Error('unauthenticated')
-    const res = await authedFetch(`${API_BASE}/v1/sessions/${lobby.sessionId}/role`, {
+    const res = await authedFetch(`${API_BASE_URL}/v1/sessions/${lobby.sessionId}/role`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character_id, role })
     })
     if (res.status === 403) throw new Error('forbidden')
@@ -290,7 +289,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     const u = before.find(m => m.character_id === character_id)
     setLobby((l) => ({ ...l, members: l.members.map(m => m.character_id === character_id ? { ...m, role } : m) }))
     try {
-      const res = await authedFetch(`${API_BASE}/v1/sessions/${sessionId}/role`, {
+      const res = await authedFetch(`${API_BASE_URL}/v1/sessions/${sessionId}/role`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character_id, role })
       })
       if (res.status === 403) { toast("You don't have permission for that action.", 'error'); throw new Error('forbidden') }
