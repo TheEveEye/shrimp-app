@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react'
 type Tier = 't1' | 't2'
 
 type TierToggleProps = {
-  value: Tier
+  value: Tier | null
   onChange: (value: Tier) => void
   disabled?: boolean
   className?: string
@@ -25,7 +25,7 @@ export default function TierToggle({
     <div className={className} style={{ display: 'inline-flex', gap: 6, ...(style ?? {}) }}>
       <button
         type="button"
-        className={`button ${value === 't2' ? 'primary' : ''}`}
+        className={`button ${value === 't2' ? 'tier-ok' : 'tier-ghost-ok'}`}
         onClick={() => onChange('t2')}
         disabled={disabled}
         title={t2Title}
@@ -34,7 +34,7 @@ export default function TierToggle({
       </button>
       <button
         type="button"
-        className={`button ${value === 't1' ? 'danger' : ''}`}
+        className={`button ${value === 't1' ? 'tier-warn' : 'tier-ghost-warn'}`}
         onClick={() => onChange('t1')}
         disabled={disabled}
         title={t1Title}

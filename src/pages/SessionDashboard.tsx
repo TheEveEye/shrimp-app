@@ -29,6 +29,7 @@ export default function SessionDashboard() {
   const [ending, setEnding] = useState(false)
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
+  const [leftCollapsed, setLeftCollapsed] = useState(false)
 
   // Open the session WS (presence + metadata)
   useEffect(() => {
@@ -118,63 +119,65 @@ export default function SessionDashboard() {
   }, [nav])
 
   const selectedIds = useMemo(() => (lobby.campaigns || []).map((c) => c.campaign_id), [lobby.campaigns])
-  const [dismissed, setDismissed] = useState<Set<number>>(new Set())
-  const dismiss = useCallback((id: number) => {
-    setDismissed(prev => {
-      const next = new Set(prev)
-      next.add(id)
-      return next
-    })
+  const hasCampaigns = selectedIds.length > 0
+  const startMs = useCallback((row: EnrichedCampaign) => {
+    const start = Date.parse(row.start_time || '')
+    if (Number.isFinite(start)) return start
+    const fallback = Date.parse(row.out_time_raw || row.out_time_utc || '')
+    return Number.isFinite(fallback) ? fallback : 0
   }, [])
   const [showCompleted, setShowCompleted] = useState(false)
-  const selectedRows = useMemo(() => selectedIds.map((id) => snapshot.byId.get(id)), [selectedIds, snapshot])
-  const completedRows = useMemo(() => selectedIds.map((id) => completedByIdRef.current.get(id)), [selectedIds, snapshot])
+  const selectedRows = useMemo(() => selectedIds.map((id) => snapshot.byId.get(id)).filter(Boolean) as EnrichedCampaign[], [selectedIds, snapshot])
+  const completedRows = useMemo(() => selectedIds.map((id) => completedByIdRef.current.get(id)).filter(Boolean) as EnrichedCampaign[], [selectedIds, snapshot])
+  const sortedSelectedRows = useMemo(() => {
+    const rows = selectedRows.slice()
+    rows.sort((a, b) => startMs(a) - startMs(b))
+    return rows
+  }, [selectedRows, startMs])
+  const sortedCompletedRows = useMemo(() => {
+    const rows = completedRows.slice()
+    rows.sort((a, b) => startMs(a) - startMs(b))
+    return rows
+  }, [completedRows, startMs])
 
   const showSkeletons = useMemo(() => !connected && selectedIds.length > 0 && snapshot.byId.size === 0, [connected, selectedIds.length, snapshot.byId.size])
 
   const activeCards = useMemo(() => {
     const cards: ReactNode[] = []
-    selectedIds.forEach((_, idx) => {
-      const row = selectedRows[idx]
-      if (row) {
-        cards.push(
-          <SovCampaignBar
-            key={row.campaign_id}
-            row={row}
-            now={now}
-            isStale={snapshot.isStale}
-          />
-        )
-      }
+    sortedSelectedRows.forEach((row) => {
+      cards.push(
+        <SovCampaignBar
+          key={row.campaign_id}
+          row={row}
+          now={now}
+          isStale={snapshot.isStale}
+        />
+      )
     })
     return cards
-  }, [selectedIds, selectedRows, now, snapshot.isStale])
+  }, [sortedSelectedRows, now, snapshot.isStale])
 
   const completedCards = useMemo(() => {
     const cards: ReactNode[] = []
-    selectedIds.forEach((idNum, idx) => {
-      const fallback = completedRows[idx]
-      if (fallback && !dismissed.has(idNum)) {
-        const defPct = fallback.defender_score != null ? Math.round(fallback.defender_score * 100) : (fallback.def_pct ?? null)
-        let status: 'defense' | 'offense' | 'unknown'
-        if (defPct == null) status = 'unknown'
-        else status = defPct >= 60 ? 'defense' : 'offense'
-        cards.push(
-          <SovCampaignBar
-            key={`completed-${idNum}`}
-            row={fallback}
-            now={now}
-            isStale={snapshot.isStale}
-            completedStatus={status}
-            onClose={() => dismiss(idNum)}
-          />
-        )
-      }
+    sortedCompletedRows.forEach((fallback) => {
+      const defPct = fallback.defender_score != null ? Math.round(fallback.defender_score * 100) : (fallback.def_pct ?? null)
+      let status: 'defense' | 'offense' | 'unknown'
+      if (defPct == null) status = 'unknown'
+      else status = defPct >= 60 ? 'defense' : 'offense'
+      cards.push(
+        <SovCampaignBar
+          key={`completed-${fallback.campaign_id}`}
+          row={fallback}
+          now={now}
+          isStale={snapshot.isStale}
+          completedStatus={status}
+        />
+      )
     })
     return cards
-  }, [selectedIds, completedRows, dismissed, now, snapshot.isStale, dismiss])
+  }, [sortedCompletedRows, now, snapshot.isStale])
 
-  const hasCompleted = completedCards.length > 0
+  const hasCompleted = sortedCompletedRows.length > 0
 
   useEffect(() => {
     if (!hasCompleted) setShowCompleted(false)
@@ -185,24 +188,42 @@ export default function SessionDashboard() {
   const sessionLabel = lobby.sessionId ? `#${lobby.sessionId}` : 'Session';
   const isOwner = !!character && lobby.owner_id === character.id
   const canLeave = !!lobby.sessionId && !isOwner
-  const showActions = canLeave || isOwner || (hasCompleted && !showCompleted)
+  const showActions = canLeave || isOwner || hasCompleted
 
   return (
-    <div className="dashboard">
+    <div className={`dashboard-shell${leftCollapsed ? ' left-collapsed' : ''}`}>
+      <aside className={`session-left-sidebar ${leftCollapsed ? 'collapsed' : 'expanded'}`} aria-label="Session sidebar">
+        <div className="sidebar-header">
+          <button
+            type="button"
+            className="collapse-btn"
+            aria-pressed={leftCollapsed}
+            aria-label={leftCollapsed ? 'Expand session sidebar' : 'Collapse session sidebar'}
+            onClick={() => setLeftCollapsed((v) => !v)}
+          >
+            <Icon name="sidebarLeft" kind="mask" size={16} className="collapse-glyph" alt="" />
+          </button>
+          <div className="sidebar-title">Sample Sidebar</div>
+        </div>
+        <div className="sidebar-body">
+          <div className="muted">Sample body content for the left sidebar.</div>
+        </div>
+      </aside>
+      <div className="dashboard">
       <div className="dashboard-heading">
         <h1 className="dashboard-title">Session {sessionLabel}</h1>
         {showActions ? (
           <div className="dashboard-actions">
-            {hasCompleted && !showCompleted ? (
-              <button
-                type="button"
-                className="icon-btn"
-                aria-label="Show completed campaigns"
-                onClick={() => setShowCompleted(true)}
-              >
-                <Icon name="ellipsis" size={16} alt="" />
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className="button"
+              aria-pressed={showCompleted}
+              disabled={!hasCampaigns}
+              title={!hasCampaigns ? 'No campaigns in this session' : (!hasCompleted ? 'No completed campaigns yet' : undefined)}
+              onClick={() => setShowCompleted((prev) => !prev)}
+            >
+              {showCompleted ? 'Hide completed' : 'Show completed'}
+            </button>
             {isOwner ? (
               <button type="button" className="button danger" onClick={() => setConfirmEndOpen(true)}>
                 End session
@@ -227,16 +248,6 @@ export default function SessionDashboard() {
             {activeCards}
             {showCompleted && completedCards.length > 0 ? (
               <>
-                <div className="camp-collapse-wrapper" key="collapse-toggle">
-                  <button
-                    type="button"
-                    className="icon-btn camp-collapse-btn"
-                    aria-label="Hide completed campaigns"
-                    onClick={() => setShowCompleted(false)}
-                  >
-                    <Icon name="chevronCompactUp" size={16} alt="" />
-                  </button>
-                </div>
                 {completedCards}
               </>
             ) : null}
@@ -305,6 +316,7 @@ export default function SessionDashboard() {
           }
         }}
       />
+      </div>
     </div>
   )
 }

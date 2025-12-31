@@ -13,7 +13,7 @@ export type Toaster = {
   entosis_tier: 't1' | 't2'
   ship_type_id?: number | null
   ship_type_name?: string | null
-  online?: boolean
+  online?: boolean | null
   last_seen_at?: number
 }
 
@@ -101,8 +101,8 @@ export function useToasters(sessionId: number) {
   const sorted = useMemo(() => {
     const arr = [...items]
     arr.sort((a, b) => {
-      const aOn = a.online ? 1 : 0
-      const bOn = b.online ? 1 : 0
+      const aOn = a.online === true ? 2 : a.online === false ? 1 : 0
+      const bOn = b.online === true ? 2 : b.online === false ? 1 : 0
       if (aOn !== bOn) return bOn - aOn
       return (a.name || '').localeCompare(b.name || '')
     })

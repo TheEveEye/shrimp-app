@@ -13,7 +13,7 @@ export default function ToasterSettingsModal({ open, onClose, currentTier, onSav
       <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
           <label className="form-label">Entosis Link Tier</label>
-          <TierToggle value={tier} onChange={setTier} />
+          <TierToggle value={tier} onChange={(next) => setTier(next)} />
         </div>
       </div>
       <div className="modal-actions" style={{ justifyContent: 'space-between' }}>

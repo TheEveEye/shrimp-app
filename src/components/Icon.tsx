@@ -1,9 +1,10 @@
-type IconName = 'signOut' | 'sidebarRight' | 'rotate' | 'copy' | 'sword' | 'shield' | 'kick' | 'promote' | 'manageCharacters' | 'unlink' | 'close' | 'chevronDown' | 'gear' | 'ellipsis' | 'chevronCompactUp'
+type IconName = 'signOut' | 'sidebarRight' | 'sidebarLeft' | 'rotate' | 'copy' | 'sword' | 'shield' | 'kick' | 'promote' | 'manageCharacters' | 'unlink' | 'close' | 'chevronDown' | 'gear' | 'ellipsis' | 'chevronCompactUp'
 
 const ICONS: Record<IconName, { src?: string; mask?: string }> = {
   // Public assets mapped to semantic names
   signOut: { src: '/rectangle.portrait.and.arrow.right.svg' },
   sidebarRight: { mask: '/sidebar.right.svg' },
+  sidebarLeft: { mask: '/sidebar.left.svg' },
   rotate: { mask: '/arrow.trianglehead.2.clockwise.rotate.90.svg' },
   copy: { mask: '/square.on.square.svg' },
   sword: { src: '/sword.filled.png' },

@@ -28,24 +28,67 @@ export default function AddToasterModal({ open, onClose, onAdd, attachedIds }: {
   const [rows, setRows] = useState<LinkedItem[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [tier, setTier] = useState<'t1'|'t2'>('t2')
+  const [tier, setTier] = useState<'t1'|'t2' | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const selectBtnRef = useRef<HTMLButtonElement | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [anchor, setAnchor] = useState<DOMRect | null>(null)
   const [mainAllyIcon, setMainAllyIcon] = useState<string | null>(null)
+  const [mainOnline, setMainOnline] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (open) return
+    setMenuOpen(false)
+    setAnchor(null)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
-    setLoading(true)
+    setTier(null)
     const headers: Record<string, string> = {}
     if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-    fetch(`${API_BASE_URL}/api/characters/linked`, { credentials: 'include', headers })
-      .then(async (res) => res.ok ? (await res.json()).characters as LinkedItem[] : [])
-      .then((arr) => setRows(arr))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
+    let cancelled = false
+    const fetchLinked = async (showSpinner: boolean) => {
+      if (showSpinner) setLoading(true)
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/characters/linked`, { credentials: 'include', headers })
+        const arr = res.ok ? (await res.json()).characters as LinkedItem[] : []
+        if (!cancelled) setRows(arr)
+      } catch {
+        if (!cancelled) setRows([])
+      } finally {
+        if (showSpinner && !cancelled) setLoading(false)
+      }
+    }
+    fetchLinked(true)
+    const timer = window.setInterval(() => fetchLinked(false), 60000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
   }, [open, accessToken])
+
+  useEffect(() => {
+    if (!open || !me?.id || !accessToken) return
+    let cancelled = false
+    const headers: Record<string, string> = { Authorization: `Bearer ${accessToken}` }
+    const fetchOnline = async () => {
+      try {
+        const res = await fetch(`https://esi.evetech.net/latest/characters/${me.id}/online/?datasource=tranquility`, { headers })
+        if (!res.ok) { if (!cancelled) setMainOnline(null); return }
+        const json = await res.json()
+        if (!cancelled) setMainOnline(typeof json?.online === 'boolean' ? json.online : null)
+      } catch {
+        if (!cancelled) setMainOnline(null)
+      }
+    }
+    fetchOnline()
+    const timer = window.setInterval(fetchOnline, 60000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [open, me?.id, accessToken])
 
   // Fetch affiliation for main if needed
   useEffect(() => {
@@ -71,8 +114,8 @@ export default function AddToasterModal({ open, onClose, onAdd, attachedIds }: {
           has_location: true,
           has_ship: true,
           has_waypoint: true,
-          has_online: true,
-          online: true,
+          has_online: mainOnline != null,
+          online: mainOnline,
           alliance_icon_url: mainAllyIcon || undefined,
         }
         list = [mainItem, ...list]
@@ -106,7 +149,7 @@ export default function AddToasterModal({ open, onClose, onAdd, attachedIds }: {
   if (!open) return null
 
   const submit = async () => {
-    if (!selectedId) return
+    if (!selectedId || !tier) return
     try {
       await onAdd(selectedId, tier)
       toast('Toaster added', 'success')
@@ -200,13 +243,13 @@ export default function AddToasterModal({ open, onClose, onAdd, attachedIds }: {
 
           <div>
             <label className="form-label">Entosis Link Tier</label>
-            <TierToggle value={tier} onChange={setTier} />
+            <TierToggle value={tier} onChange={(next) => setTier(next)} />
           </div>
         </div>
       </div>
       <div className="modal-actions">
         <button type="button" className="button" onClick={onClose}>Cancel</button>
-        <button type="button" className="button primary" onClick={() => void submit()} disabled={!selectedId}>Add</button>
+        <button type="button" className="button primary" onClick={() => void submit()} disabled={!selectedId || !tier}>Add</button>
       </div>
     </ModalFrame>
   )

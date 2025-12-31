@@ -60,7 +60,7 @@ export default function MembersSidebar() {
           aria-label={collapsed ? 'Expand members panel' : 'Collapse members panel'}
           onClick={() => setCollapsed(v => !v)}
         >
-          <Icon name="sidebarRight" kind="mask" size={16} className={`collapse-glyph ${collapsed ? 'rot' : ''}`} alt="" />
+          <Icon name="sidebarRight" kind="mask" size={16} className="collapse-glyph" alt="" />
         </button>
       </div>
 
