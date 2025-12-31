@@ -28,20 +28,11 @@ type CompletedStatus = 'defense' | 'offense' | 'unknown'
 
 export default React.memo(function SovCampaignBar({ row, now, isStale, completedStatus, onClose }: { row: EnrichedCampaign; now: number; isStale: boolean; completedStatus?: CompletedStatus; onClose?: () => void }) {
   const normalizedDefScore = row.defender_score ?? (completedStatus === 'defense' ? 1 : completedStatus === 'offense' ? 0 : 0)
-  const effectiveDefPct = row.def_pct ?? Math.round(normalizedDefScore * 100)
-
   let defSegmentsBase = Math.round(normalizedDefScore * 15)
   if (completedStatus === 'defense') defSegmentsBase = 15
   if (completedStatus === 'offense') defSegmentsBase = 0
   const defSegments = defSegmentsBase
   const attSegments = 15 - defSegments
-
-  // Mirror SovCampaignsTable remaining node logic
-  const NODE_PCT = 100 / 15 // 6.6667%
-  const above = Math.max(effectiveDefPct - 60, 0)
-  const below = Math.max(60 - effectiveDefPct, 0)
-  const incAbove = Math.round(above / NODE_PCT - 1e-9)
-  const incBelow = Math.round(below / NODE_PCT - 1e-9)
 
   const etaMs = new Date(row.out_time_raw).getTime() - now
   const eta = formatT(etaMs)
