@@ -171,25 +171,36 @@ export default function SessionDashboard() {
     return cards
   }, [sortedSelectedRows, now, snapshot.isStale])
 
-  const completedCards = useMemo(() => {
-    const cards: ReactNode[] = []
-    sortedCompletedRows.forEach((fallback) => {
+  type CompletedStatus = 'defense' | 'offense' | 'unknown'
+
+  const combinedCards = useMemo(() => {
+    if (!showCompleted) return []
+    const rows: Array<{ row: EnrichedCampaign; completedStatus?: CompletedStatus }> = []
+    selectedIds.forEach((id) => {
+      const active = snapshot.byId.get(id)
+      if (active) {
+        rows.push({ row: active })
+        return
+      }
+      const fallback = completedByIdRef.current.get(id) || storedSnapshotById.get(id)
+      if (!fallback) return
       const defPct = fallback.defender_score != null ? Math.round(fallback.defender_score * 100) : (fallback.def_pct ?? null)
-      let status: 'defense' | 'offense' | 'unknown'
+      let status: CompletedStatus
       if (defPct == null) status = 'unknown'
       else status = defPct >= 60 ? 'defense' : 'offense'
-      cards.push(
-        <SovCampaignBar
-          key={`completed-${fallback.campaign_id}`}
-          row={fallback}
-          now={now}
-          isStale={snapshot.isStale}
-          completedStatus={status}
-        />
-      )
+      rows.push({ row: fallback, completedStatus: status })
     })
-    return cards
-  }, [sortedCompletedRows, now, snapshot.isStale])
+    rows.sort((a, b) => startMs(a.row) - startMs(b.row))
+    return rows.map(({ row, completedStatus }) => (
+      <SovCampaignBar
+        key={`${completedStatus ? 'completed' : 'active'}-${row.campaign_id}`}
+        row={row}
+        now={now}
+        isStale={snapshot.isStale}
+        completedStatus={completedStatus}
+      />
+    ))
+  }, [showCompleted, selectedIds, snapshot.byId, storedSnapshotById, startMs, now, snapshot.isStale])
 
   const hasCompleted = sortedCompletedRows.length > 0
 
@@ -197,7 +208,8 @@ export default function SessionDashboard() {
     if (!hasCompleted) setShowCompleted(false)
   }, [hasCompleted])
 
-  const showCampaignSection = showSkeletons || activeCards.length > 0 || (showCompleted && completedCards.length > 0)
+  const displayCards = showCompleted ? combinedCards : activeCards
+  const showCampaignSection = showSkeletons || displayCards.length > 0
 
   const sessionLabel = lobby.sessionId ? `#${lobby.sessionId}` : 'Session';
   const isOwner = !!character && lobby.owner_id === character.id
@@ -258,12 +270,7 @@ export default function SessionDashboard() {
                 <div key={`sk-${i}`} className="camp-card skeleton" aria-hidden="true" style={{ height: 56 }} />
               ))
             ) : null}
-            {activeCards}
-            {showCompleted && completedCards.length > 0 ? (
-              <>
-                {completedCards}
-              </>
-            ) : null}
+            {displayCards}
           </div>
         ) : null}
 

@@ -67,8 +67,12 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
 
   const dotlanUrl = reg && sys ? `https://evemaps.dotlan.net/map/${toUnderscores(reg)}/${toUnderscores(sys)}` : undefined
 
+  const isPending = !completedStatus && etaMs > 0
+  const isStartingSoon = !completedStatus && etaMs > 0 && etaMs <= 5 * 60 * 1000
   const cardClass = ['camp-card']
   if (isStale) cardClass.push('stale')
+  if (isPending) cardClass.push('pending')
+  if (isStartingSoon) cardClass.push('starting-soon')
   if (completedStatus === 'unknown') cardClass.push('completed-unknown')
   const showCompletedLabel = completedStatus === 'unknown'
   const displayDefenderRemaining = showCompletedLabel ? 0 : defSegments
