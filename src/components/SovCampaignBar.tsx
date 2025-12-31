@@ -37,19 +37,11 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
   const attSegments = 15 - defSegments
 
   // Mirror SovCampaignsTable remaining node logic
-  const ATTACKERS_TOTAL = 9
-  const DEFENDERS_TOTAL = 6
   const NODE_PCT = 100 / 15 // 6.6667%
   const above = Math.max(effectiveDefPct - 60, 0)
   const below = Math.max(60 - effectiveDefPct, 0)
   const incAbove = Math.round(above / NODE_PCT - 1e-9)
   const incBelow = Math.round(below / NODE_PCT - 1e-9)
-  const attacker_score = effectiveDefPct >= 60
-    ? ATTACKERS_TOTAL + incAbove
-    : Math.max(ATTACKERS_TOTAL - incBelow, 0)
-  const defnder_score = effectiveDefPct <= 60
-    ? DEFENDERS_TOTAL + incBelow
-    : Math.max(DEFENDERS_TOTAL - incAbove, 0)
 
   const etaMs = new Date(row.out_time_raw).getTime() - now
   const eta = formatT(etaMs)
