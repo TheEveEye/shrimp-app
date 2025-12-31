@@ -15,7 +15,7 @@ type ServerMessage =
   | { type: 'campaigns.diff'; topic: 'public.campaigns'; since: number; version: number; ts: string; isStale: boolean; added: any[]; updated: Array<{ campaign_id: number; changes: any }>; removed: number[] }
   | { type: 'campaigns.resync'; topic: 'public.campaigns' }
   // Session messages (lobby)
-  | { type: 'session.snapshot'; topic: string; members: Array<{ character_id: number; name?: string; role: 'coordinator' | 'line'; online: boolean }>; meta: { id: number; owner_id: number; created_at: number; ended_at?: number; campaigns: number[] } }
+  | { type: 'session.snapshot'; topic: string; members: Array<{ character_id: number; name?: string; role: 'coordinator' | 'line'; online: boolean }>; meta: { id: number; owner_id: number; created_at: number; ended_at?: number; campaigns: Array<{ campaign_id: number; side: 'offense' | 'defense' }>; campaign_snapshots?: Array<{ campaign_id: number; snapshot: any }> } }
   | { type: 'presence.joined'; topic: string; character_id: number }
   | { type: 'presence.left'; topic: string; character_id: number }
   | { type: 'presence.heartbeat'; topic: string; ts: number }

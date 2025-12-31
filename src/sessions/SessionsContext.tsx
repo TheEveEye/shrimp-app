@@ -24,6 +24,7 @@ type Lobby = {
   created_at?: number
   owner_id?: number
   campaigns?: Array<{ campaign_id: number; side: 'offense' | 'defense' }>
+  campaignSnapshots?: Array<{ campaign_id: number; snapshot: any }>
   coordinator_code?: string
   line_code?: string
   connected: boolean
@@ -103,6 +104,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
           created_at: raw.meta?.created_at,
           owner_id: raw.meta?.owner_id,
           campaigns: raw.meta?.campaigns,
+          campaignSnapshots: raw.meta?.campaign_snapshots,
           myRole: my,
           connected: true,
         }))
@@ -189,7 +191,7 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     if (!res.ok) throw new Error('failed')
     const json = await res.json()
     const my = character ? (json.members || []).find((m: any) => m.character_id === character.id)?.role : undefined
-    setLobby((l) => ({ ...l, sessionId: id, members: json.members || [], created_at: json.session?.created_at, owner_id: json.session?.owner_id, campaigns: json.session?.campaigns, coordinator_code: json.coordinator_code, line_code: json.line_code, myRole: my }))
+    setLobby((l) => ({ ...l, sessionId: id, members: json.members || [], created_at: json.session?.created_at, owner_id: json.session?.owner_id, campaigns: json.session?.campaigns, campaignSnapshots: json.session?.campaign_snapshots, coordinator_code: json.coordinator_code, line_code: json.line_code, myRole: my }))
     // Subscribe WS
     const topic = `session.${id}`
     topicRef.current = topic

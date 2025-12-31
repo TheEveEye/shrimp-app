@@ -2,12 +2,12 @@ import { useMemo, useState } from 'react'
 import { useToasters } from '../toasters/useToasters'
 import { useToast } from './ToastProvider'
 import ConfirmModal from './ConfirmModal'
-import Icon from './Icon'
 import AddToasterModal from './AddToasterModal'
 import ToasterSettingsModal from './ToasterSettingsModal'
 import Panel from './ui/Panel'
 import CharacterAvatar from './ui/CharacterAvatar'
 import Badge from './ui/Badge'
+import IconButton from './ui/IconButton'
 
 export default function ToastersPanel({ sessionId }: { sessionId: number }) {
   const { items, loading, fetchAll, attach, detach, updateTier } = useToasters(sessionId)
@@ -60,9 +60,7 @@ export default function ToastersPanel({ sessionId }: { sessionId: number }) {
                 <span className="muted" style={{ fontSize: 12 }}>{t.entosis_tier === 't2' ? '2:00 cycles' : '5:00 cycles'}</span>
               </div>
               <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button className="icon-plain" aria-label="Toaster settings" title="Settings" onClick={() => setEditing(t.character_id)}>
-                  <Icon name="gear" size={16} alt="" />
-                </button>
+                <IconButton icon="gear" variant="plain" aria-label="Toaster settings" title="Settings" onClick={() => setEditing(t.character_id)} />
                 <span className="muted" style={{ fontSize: 12 }}>{t.owner_user?.display_name || ''}</span>
               </div>
             </div>

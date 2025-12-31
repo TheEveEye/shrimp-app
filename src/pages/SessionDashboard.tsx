@@ -9,7 +9,7 @@ import type { EnrichedCampaign } from '../components/SovCampaignsTable'
 import { useAuth } from '../auth/AuthContext'
 import ToastersPanel from '../components/ToastersPanel'
 import Panel from '../components/ui/Panel'
-import Icon from '../components/Icon'
+import IconButton from '../components/ui/IconButton'
 import ConfirmModal from '../components/ConfirmModal'
 import { useToast } from '../components/ToastProvider'
 
@@ -127,8 +127,22 @@ export default function SessionDashboard() {
     return Number.isFinite(fallback) ? fallback : 0
   }, [])
   const [showCompleted, setShowCompleted] = useState(false)
+  const storedSnapshotById = useMemo(() => {
+    const map = new Map<number, EnrichedCampaign>()
+    for (const entry of lobby.campaignSnapshots || []) {
+      if (!entry?.campaign_id || !entry.snapshot) continue
+      map.set(entry.campaign_id, entry.snapshot as EnrichedCampaign)
+    }
+    return map
+  }, [lobby.campaignSnapshots])
   const selectedRows = useMemo(() => selectedIds.map((id) => snapshot.byId.get(id)).filter(Boolean) as EnrichedCampaign[], [selectedIds, snapshot])
-  const completedRows = useMemo(() => selectedIds.map((id) => completedByIdRef.current.get(id)).filter(Boolean) as EnrichedCampaign[], [selectedIds, snapshot])
+  const completedRows = useMemo(() => {
+    if (!connected && snapshot.byId.size === 0) return []
+    return selectedIds
+      .filter((id) => !snapshot.byId.has(id))
+      .map((id) => completedByIdRef.current.get(id) || storedSnapshotById.get(id))
+      .filter(Boolean) as EnrichedCampaign[]
+  }, [selectedIds, snapshot, storedSnapshotById, connected])
   const sortedSelectedRows = useMemo(() => {
     const rows = selectedRows.slice()
     rows.sort((a, b) => startMs(a) - startMs(b))
@@ -194,15 +208,14 @@ export default function SessionDashboard() {
     <div className={`dashboard-shell${leftCollapsed ? ' left-collapsed' : ''}`}>
       <aside className={`session-left-sidebar ${leftCollapsed ? 'collapsed' : 'expanded'}`} aria-label="Session sidebar">
         <div className="sidebar-header">
-          <button
-            type="button"
-            className="collapse-btn"
+          <IconButton
+            icon="sidebarLeft"
+            iconKind="mask"
+            iconClassName="collapse-glyph"
             aria-pressed={leftCollapsed}
             aria-label={leftCollapsed ? 'Expand session sidebar' : 'Collapse session sidebar'}
             onClick={() => setLeftCollapsed((v) => !v)}
-          >
-            <Icon name="sidebarLeft" kind="mask" size={16} className="collapse-glyph" alt="" />
-          </button>
+          />
           <div className="sidebar-title">Sample Sidebar</div>
         </div>
         <div className="sidebar-body">

@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useToast } from './ToastProvider'
-import Icon from './Icon'
 import ConfirmModal from './ConfirmModal'
 import ModalFrame from './ui/ModalFrame'
 import CharacterAvatar from './ui/CharacterAvatar'
 import Badge from './ui/Badge'
+import IconButton from './ui/IconButton'
 import { API_BASE_URL } from '../lib/api'
 type Props = { open: boolean; onClose: () => void }
 
@@ -201,12 +201,8 @@ export default function ManageCharactersModal({ open, onClose }: Props) {
                   </div>
                   {!isMain ? (
                     <div className="mc-actions">
-                      <button className="icon-plain" aria-label="Re-consent scopes" title="Re-consent" disabled={busyId === r.character_id} onClick={() => onReconsent(r.character_id)}>
-                        <Icon name="rotate" kind="mask" size={20} alt="" />
-                      </button>
-                      <button className="icon-plain danger" aria-label="Unlink character" title="Unlink" disabled={busyId === r.character_id} onClick={() => { setUnlinkTarget(r); setConfirmOpen(true) }}>
-                        <Icon name="unlink" kind="mask" size={20} alt="" />
-                      </button>
+                      <IconButton icon="rotate" iconKind="mask" variant="plain" aria-label="Re-consent scopes" title="Re-consent" disabled={busyId === r.character_id} onClick={() => onReconsent(r.character_id)} />
+                      <IconButton icon="unlink" iconKind="mask" variant="plain" tone="danger" aria-label="Unlink character" title="Unlink" disabled={busyId === r.character_id} onClick={() => { setUnlinkTarget(r); setConfirmOpen(true) }} />
                     </div>
                   ) : <span />}
                 </li>

@@ -5,6 +5,7 @@ import ConfirmModal from './ConfirmModal'
 import Popover from './Popover'
 import { useAuth } from '../auth/AuthContext'
 import CharacterAvatar from './ui/CharacterAvatar'
+import IconButton from './ui/IconButton'
 
 type Role = 'coordinator' | 'line'
 
@@ -46,22 +47,15 @@ export default function MembersSidebar() {
       <div className="members-header">
         <div className="members-title">
           <div className="title-text">Members</div>
-          {!collapsed ? (
-            <div className="counts">
-              <span>Coordinators ({coords.length})</span>
-              <span className="dot">•</span>
-              <span>Line ({line.length})</span>
-            </div>
-          ) : null}
         </div>
-        <button
-          className="collapse-btn"
+        <IconButton
+          icon="sidebarRight"
+          iconKind="mask"
+          iconClassName="collapse-glyph"
           aria-pressed={collapsed}
           aria-label={collapsed ? 'Expand members panel' : 'Collapse members panel'}
           onClick={() => setCollapsed(v => !v)}
-        >
-          <Icon name="sidebarRight" kind="mask" size={16} className="collapse-glyph" alt="" />
-        </button>
+        />
       </div>
 
       {!collapsed ? (
@@ -119,12 +113,8 @@ function Section({ title, role, code, canManage, members }: { title: string; rol
         {canManage && code ? (
           <div className="section-actions">
             <span className="code-chip mono" aria-label={`${role} code`}>{code}</span>
-            <button className="icon-btn" aria-label={`Regenerate ${role} code`} onClick={onRotate}>
-              <Icon name="rotate" kind="mask" size={16} alt="" />
-            </button>
-            <button className="icon-btn" aria-label={`Copy ${role} code`} onClick={onCopy} aria-pressed={copyOk}>
-              <Icon name="copy" kind="mask" size={16} alt="" />
-            </button>
+            <IconButton icon="rotate" iconKind="mask" aria-label={`Regenerate ${role} code`} onClick={onRotate} />
+            <IconButton icon="copy" iconKind="mask" aria-label={`Copy ${role} code`} onClick={onCopy} aria-pressed={copyOk} />
           </div>
         ) : null}
       </div>

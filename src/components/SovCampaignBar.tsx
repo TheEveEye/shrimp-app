@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
-import Icon from './Icon'
 import Badge from './ui/Badge'
+import IconButton from './ui/IconButton'
 import type { EnrichedCampaign } from './SovCampaignsTable'
 
 function formatT(ms: number) {
@@ -68,7 +68,7 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
     ? completedStatus === 'unknown'
       ? `Completed campaign for ${sys}${reg ? ' in ' + reg : ''}. Status unknown.`
       : `Completed campaign for ${sys}${reg ? ' in ' + reg : ''}. ${completedStatus === 'defense' ? 'Defenders' : 'Attackers'} secured the objective.`
-    : `Sovereignty campaign for ${sys}${reg ? ' in ' + reg : ''}. ETA ${eta}. Score ${defnder_score} defender / ${attacker_score} attacker remaining.`
+    : `Sovereignty campaign for ${sys}${reg ? ' in ' + reg : ''}. ETA ${eta}. Score ${defSegments} defender / ${attSegments} attacker.`
 
   const segs = useMemo(() => {
     if (completedStatus === 'unknown') {
@@ -88,8 +88,8 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
   if (isStale) cardClass.push('stale')
   if (completedStatus === 'unknown') cardClass.push('completed-unknown')
   const showCompletedLabel = completedStatus === 'unknown'
-  const displayDefenderRemaining = showCompletedLabel ? 0 : defnder_score
-  const displayAttackerRemaining = showCompletedLabel ? 0 : attacker_score
+  const displayDefenderRemaining = showCompletedLabel ? 0 : defSegments
+  const displayAttackerRemaining = showCompletedLabel ? 0 : attSegments
 
   return (
     <section className={cardClass.join(' ')} aria-label={ariaLabel}>
@@ -100,9 +100,7 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
           ))}
         </div>
         {completedStatus && onClose ? (
-          <button className="camp-close" aria-label="Dismiss completed campaign" title="Dismiss" onClick={onClose}>
-            <Icon name="close" size={14} alt="" />
-          </button>
+          <IconButton icon="close" className="camp-close" aria-label="Dismiss completed campaign" title="Dismiss" onClick={onClose} />
         ) : null}
         <div className="camp-meta">
           {sys && sysUrl ? (
@@ -137,7 +135,7 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
         </div>
       </div>
       <div className="sr-only">
-        {`ETA ${eta}. Defender remaining ${defnder_score}, attacker remaining ${attacker_score}.`}
+        {`ETA ${eta}. Defender segments ${defSegments}, attacker segments ${attSegments}.`}
         {dotlanUrl ? ` Link to system ${sys} in region ${reg}.` : ''}
       </div>
     </section>

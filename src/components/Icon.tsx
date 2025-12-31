@@ -1,4 +1,4 @@
-type IconName = 'signOut' | 'sidebarRight' | 'sidebarLeft' | 'rotate' | 'copy' | 'sword' | 'shield' | 'kick' | 'promote' | 'manageCharacters' | 'unlink' | 'close' | 'chevronDown' | 'gear' | 'ellipsis' | 'chevronCompactUp'
+export type IconName = 'signOut' | 'sidebarRight' | 'sidebarLeft' | 'rotate' | 'copy' | 'sword' | 'shield' | 'kick' | 'promote' | 'manageCharacters' | 'unlink' | 'close' | 'chevronDown' | 'gear' | 'ellipsis' | 'chevronCompactUp'
 
 const ICONS: Record<IconName, { src?: string; mask?: string }> = {
   // Public assets mapped to semantic names
