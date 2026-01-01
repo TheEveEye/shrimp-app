@@ -11,8 +11,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "preview": "vite preview",
-    "deploy": "npm run build && cp dist/index.html dist/404.html && gh-pages -d dist --cname shrimp.kiwiapps.dev",
-    "sde:fetch": "node ./scripts/fetch-sde.mjs"
+    "deploy": "npm run build && cp dist/index.html dist/404.html && gh-pages -d dist --cname shrimp.kiwiapps.dev"
   },
   "dependencies": {
     "react": "^19.1.1",
