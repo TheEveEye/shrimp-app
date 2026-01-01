@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Badge from './ui/Badge'
 import IconButton from './ui/IconButton'
 import type { EnrichedCampaign } from './SovCampaignsTable'
+import Icon from './Icon'
 
 function formatT(ms: number) {
   const sign = ms > 0 ? '-' : '+'
@@ -26,7 +27,7 @@ function toUnderscores(name?: string) {
 
 type CompletedStatus = 'defense' | 'offense' | 'unknown'
 
-export default React.memo(function SovCampaignBar({ row, now, isStale, completedStatus, onClose }: { row: EnrichedCampaign; now: number; isStale: boolean; completedStatus?: CompletedStatus; onClose?: () => void }) {
+export default React.memo(function SovCampaignBar({ row, now, isStale, completedStatus, onClose, side }: { row: EnrichedCampaign; now: number; isStale: boolean; completedStatus?: CompletedStatus; onClose?: () => void; side?: 'offense' | 'defense' }) {
   const normalizedDefScore = row.defender_score ?? (completedStatus === 'defense' ? 1 : completedStatus === 'offense' ? 0 : 0)
   let defSegmentsBase = Math.round(normalizedDefScore * 15)
   if (completedStatus === 'defense') defSegmentsBase = 15
@@ -77,13 +78,49 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
   const showCompletedLabel = completedStatus === 'unknown'
   const displayDefenderRemaining = showCompletedLabel ? 0 : defSegments
   const displayAttackerRemaining = showCompletedLabel ? 0 : attSegments
+  const sideIcon = side === 'offense' ? 'sword' : side === 'defense' ? 'shield' : null
+  const prevDefSegmentsRef = useRef<number | null>(null)
+  const pulseTimerRef = useRef<number | null>(null)
+  const [scorePulse, setScorePulse] = useState(false)
+  const [changedSegments, setChangedSegments] = useState<number[]>([])
+  const [changeDirection, setChangeDirection] = useState<'up' | 'down' | null>(null)
+  const changedSet = useMemo(() => new Set(changedSegments), [changedSegments])
 
+  useEffect(() => {
+    if (completedStatus) return
+    const prev = prevDefSegmentsRef.current
+    prevDefSegmentsRef.current = defSegments
+    if (prev == null || prev === defSegments) return
+    const indices: number[] = []
+    if (defSegments > prev) {
+      setChangeDirection('up')
+      for (let i = prev; i < defSegments; i++) indices.push(i)
+    } else {
+      setChangeDirection('down')
+      for (let i = defSegments; i < prev; i++) indices.push(i)
+    }
+    setChangedSegments(indices)
+    setScorePulse(true)
+    if (pulseTimerRef.current) window.clearTimeout(pulseTimerRef.current)
+    pulseTimerRef.current = window.setTimeout(() => {
+      setScorePulse(false)
+      setChangedSegments([])
+      setChangeDirection(null)
+      pulseTimerRef.current = null
+    }, 1200)
+    return () => {
+      if (pulseTimerRef.current) {
+        window.clearTimeout(pulseTimerRef.current)
+        pulseTimerRef.current = null
+      }
+    }
+  }, [defSegments, completedStatus])
   return (
     <section className={cardClass.join(' ')} aria-label={ariaLabel}>
       <div className="camp-strip-wrap">
-        <div className="camp-strip" aria-hidden="true">
+        <div className={`camp-strip${scorePulse ? ' score-pulse' : ''}`} aria-hidden="true">
           {segs.map((t, idx) => (
-            <div key={idx} className={`camp-seg ${t}`} />
+            <div key={idx} className={`camp-seg ${t}${scorePulse && changedSet.has(idx) ? ` score-change${changeDirection ? ` ${changeDirection}` : ''}` : ''}`} />
           ))}
         </div>
         {completedStatus && onClose ? (
@@ -107,8 +144,13 @@ export default React.memo(function SovCampaignBar({ row, now, isStale, completed
           ) : null}
         </div>
         <div className="camp-overlay">
+          {sideIcon ? (
+            <span className={`camp-side ${side}`} title={side === 'offense' ? 'Offense campaign' : 'Defense campaign'}>
+              <Icon name={sideIcon} size={18} className="camp-side-glyph" alt="" />
+            </span>
+          ) : null}
           {ownerIcon ? (
-            <img className="camp-icon" src={ownerIcon} width={32} height={32} alt="owner icon" />
+            <img className="camp-icon" src={ownerIcon} width={32} height={32} alt="owner icon" title={row.defender_name || ''} />
           ) : null}
           <div className="camp-center mono">
             {!showCompletedLabel ? <span className="camp-eta">{eta}</span> : null}

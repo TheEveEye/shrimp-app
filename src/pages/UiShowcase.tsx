@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Panel from '../components/ui/Panel'
 import Badge from '../components/ui/Badge'
 import TierToggle from '../components/ui/TierToggle'
@@ -14,7 +14,22 @@ function buildCampaign(base: EnrichedCampaign, overrides: Partial<EnrichedCampai
 
 export default function UiShowcase() {
   const [tier, setTier] = useState<'t1' | 't2' | null>(null)
+  const [pulseStep, setPulseStep] = useState(0)
+  const pulseDirRef = useRef(1)
   const now = Date.now()
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setPulseStep((v) => {
+        let next = v + pulseDirRef.current
+        if (next >= 15) { next = 15; pulseDirRef.current = -1 }
+        if (next <= 0) { next = 0; pulseDirRef.current = 1 }
+        return next
+      })
+    }, 2000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   const baseCampaign: EnrichedCampaign = {
     campaign_id: 1,
     solar_system_id: 30000142,
@@ -36,6 +51,18 @@ export default function UiShowcase() {
   }
 
   const campaigns = useMemo(() => {
+    const pulsePct = Math.round((pulseStep / 15) * 100)
+    const pulseScore = pulseStep / 15
+    const pulseBase = buildCampaign(baseCampaign, {
+      out_time_utc: new Date(now - 9 * 60 * 1000).toISOString(),
+      out_time_raw: new Date(now - 9 * 60 * 1000).toISOString(),
+      def_pct: pulsePct,
+      defender_score: pulseScore,
+      system_name: 'A-BO4V',
+      constellation_name: 'Q-TBHW',
+      region_name: 'Querious',
+    })
+    const pulsePop = buildCampaign(pulseBase, { campaign_id: 6, system_name: 'A-BO4V' })
     const soon = buildCampaign(baseCampaign, {
       campaign_id: 2,
       out_time_utc: new Date(now + 4 * 60 * 1000).toISOString(),
@@ -76,8 +103,16 @@ export default function UiShowcase() {
       constellation_name: 'U-HYZN',
       region_name: 'Fountain',
     })
-    return { soon, pending, active, stale }
-  }, [baseCampaign, now])
+    return { soon, pending, active, stale, pulsePop }
+  }, [baseCampaign, now, pulseStep])
+
+  const mockEvents = [
+    { id: 1, label: 'Session created', time: '23:49:27', details: ['SomeKiwi'] },
+    { id: 2, label: 'Member joined', time: '23:49:27', details: ['SomeKiwi', 'role coordinator'] },
+    { id: 3, label: 'Campaign added', time: '00:46:26', details: ['campaign P-8PDJ'] },
+    { id: 4, label: 'Campaign side changed', time: '01:09:47', details: ['defense → offense', 'campaign 3-QNM4'] },
+    { id: 5, label: 'Campaign completed', time: '02:12:14', details: ['campaign JNG7-K'] },
+  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -176,14 +211,40 @@ export default function UiShowcase() {
       </Panel>
 
       <Panel title="Campaign Bars" style={{ marginTop: 8 }} bodyStyle={{ padding: 16 }}>
-        <div className="camp-list">
-          <SovCampaignBar row={campaigns.soon} now={now} isStale={false} />
-          <SovCampaignBar row={campaigns.pending} now={now} isStale={false} />
-          <SovCampaignBar row={campaigns.active} now={now} isStale={false} />
-          <SovCampaignBar row={campaigns.stale} now={now} isStale />
-          <SovCampaignBar row={campaigns.active} now={now} isStale={false} completedStatus="defense" />
-          <SovCampaignBar row={campaigns.pending} now={now} isStale={false} completedStatus="offense" />
-          <SovCampaignBar row={campaigns.soon} now={now} isStale={false} completedStatus="unknown" />
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div>
+            <div className="muted" style={{ marginBottom: 6 }}>Score change: segment pop</div>
+            <div className="camp-list">
+              <SovCampaignBar row={campaigns.pulsePop} now={now} isStale={false} side="offense" />
+            </div>
+          </div>
+          <div className="camp-list">
+            <SovCampaignBar row={campaigns.soon} now={now} isStale={false} side="defense" />
+            <SovCampaignBar row={campaigns.pending} now={now} isStale={false} side="offense" />
+            <SovCampaignBar row={campaigns.active} now={now} isStale={false} side="defense" />
+            <SovCampaignBar row={campaigns.stale} now={now} isStale side="defense" />
+            <SovCampaignBar row={campaigns.active} now={now} isStale={false} completedStatus="defense" side="defense" />
+            <SovCampaignBar row={campaigns.pending} now={now} isStale={false} completedStatus="offense" side="offense" />
+            <SovCampaignBar row={campaigns.soon} now={now} isStale={false} completedStatus="unknown" side="defense" />
+          </div>
+        </div>
+      </Panel>
+
+      <Panel title="Session Events" style={{ marginTop: 8 }} bodyStyle={{ padding: 16 }}>
+        <div className="session-events">
+          <ul className="event-items">
+            {mockEvents.map((evt) => (
+              <li key={evt.id} className="event-item">
+                <div className="event-title">{evt.label}</div>
+                <div className="event-meta">
+                  <span className="mono">{evt.time}</span>
+                  {evt.details.map((detail) => (
+                    <span key={`${evt.id}-${detail}`} className="event-detail">{detail}</span>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       </Panel>
     </div>

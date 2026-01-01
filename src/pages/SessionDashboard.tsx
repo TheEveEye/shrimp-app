@@ -13,6 +13,7 @@ import IconButton from '../components/ui/IconButton'
 import ConfirmModal from '../components/ConfirmModal'
 import { useToast } from '../components/ToastProvider'
 import SessionCampaignsModal from '../components/SessionCampaignsModal'
+import { API_BASE_URL } from '../lib/api'
 
 type Snapshot = {
   timestamp: number
@@ -20,11 +21,21 @@ type Snapshot = {
   byId: Map<number, EnrichedCampaign>
 }
 
+type SessionEvent = {
+  id: number
+  event_type: string
+  actor_character_id?: number | null
+  actor_name?: string | null
+  campaign_id?: number | null
+  created_at: number
+  payload?: any
+}
+
 export default function SessionDashboard() {
   const { id } = useParams()
   const nav = useNavigate()
   const { lobby, openLobby, endSession, leaveSession, fetchActiveSessions } = useSessions()
-  const { isReady, isAuthenticated, character } = useAuth()
+  const { isReady, isAuthenticated, character, accessToken } = useAuth()
   const { toast } = useToast()
   const [confirmEndOpen, setConfirmEndOpen] = useState(false)
   const [ending, setEnding] = useState(false)
@@ -32,6 +43,8 @@ export default function SessionDashboard() {
   const [leaving, setLeaving] = useState(false)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
   const [manageOpen, setManageOpen] = useState(false)
+  const [events, setEvents] = useState<SessionEvent[]>([])
+  const [eventsLoading, setEventsLoading] = useState(false)
 
   // Open the session WS (presence + metadata)
   useEffect(() => {
@@ -120,6 +133,36 @@ export default function SessionDashboard() {
     return () => { remove() }
   }, [nav])
 
+  useEffect(() => {
+    if (!lobby.sessionId || !accessToken) {
+      setEvents([])
+      return
+    }
+    let cancelled = false
+    const fetchEvents = async () => {
+      if (!lobby.sessionId || !accessToken) return
+      setEventsLoading(true)
+      try {
+        const res = await fetch(`${API_BASE_URL}/v1/sessions/${lobby.sessionId}/events?limit=200`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        })
+        if (!res.ok) return
+        const json = await res.json()
+        if (!cancelled) setEvents(Array.isArray(json.events) ? json.events : [])
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setEventsLoading(false)
+      }
+    }
+    fetchEvents()
+    const timer = window.setInterval(fetchEvents, 15000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [lobby.sessionId, accessToken])
+
   const selectedIds = useMemo(() => (lobby.campaigns || []).map((c) => c.campaign_id), [lobby.campaigns])
   const hasCampaigns = selectedIds.length > 0
   const startMs = useCallback((row: EnrichedCampaign) => {
@@ -170,6 +213,12 @@ export default function SessionDashboard() {
     }
   }, [snapshot, storedSnapshotById])
 
+  const sideById = useMemo(() => {
+    const map = new Map<number, 'offense' | 'defense'>()
+    for (const c of modalCampaigns) map.set(c.campaign_id, c.side)
+    return map
+  }, [modalCampaigns])
+
   const activeCards = useMemo(() => {
     const cards: ReactNode[] = []
     sortedSelectedRows.forEach((row) => {
@@ -179,11 +228,12 @@ export default function SessionDashboard() {
           row={row}
           now={now}
           isStale={snapshot.isStale}
+          side={sideById.get(row.campaign_id)}
         />
       )
     })
     return cards
-  }, [sortedSelectedRows, now, snapshot.isStale])
+  }, [sortedSelectedRows, now, snapshot.isStale, sideById])
 
   type CompletedStatus = 'defense' | 'offense' | 'unknown'
 
@@ -212,9 +262,10 @@ export default function SessionDashboard() {
         now={now}
         isStale={snapshot.isStale}
         completedStatus={completedStatus}
+        side={sideById.get(row.campaign_id)}
       />
     ))
-  }, [showCompleted, selectedIds, snapshot.byId, storedSnapshotById, startMs, now, snapshot.isStale])
+  }, [showCompleted, selectedIds, snapshot.byId, storedSnapshotById, startMs, now, snapshot.isStale, sideById])
 
   const hasCompleted = sortedCompletedRows.length > 0
 
@@ -224,6 +275,46 @@ export default function SessionDashboard() {
 
   const displayCards = showCompleted ? combinedCards : activeCards
   const showCampaignSection = showSkeletons || displayCards.length > 0
+
+  const formatEventTime = (ts: number) => {
+    const d = new Date(ts)
+    const hh = String(d.getHours()).padStart(2, '0')
+    const mm = String(d.getMinutes()).padStart(2, '0')
+    const ss = String(d.getSeconds()).padStart(2, '0')
+    return `${hh}:${mm}:${ss}`
+  }
+
+  const formatEventLabel = (evt: SessionEvent) => {
+    const map: Record<string, string> = {
+      'session.created': 'Session created',
+      'session.ended': 'Session ended',
+      'member.joined': 'Member joined',
+      'member.left': 'Member left',
+      'member.kicked': 'Member kicked',
+      'member.role_updated': 'Role updated',
+      'codes.rotated': 'Join code rotated',
+      'campaign.added': 'Campaign added',
+      'campaign.started': 'Campaign started',
+      'campaign.removed': 'Campaign removed',
+      'campaign.side_changed': 'Campaign side changed',
+      'campaign.updated': 'Campaign updated',
+      'campaign.ended': 'Campaign completed',
+    }
+    return map[evt.event_type] || evt.event_type.replace(/[._]/g, ' ')
+  }
+
+  const formatEventDetails = (evt: SessionEvent) => {
+    const details: string[] = []
+    const actorLabel = evt.actor_name || (evt.actor_character_id ? `#${evt.actor_character_id}` : null)
+    if (actorLabel) details.push(actorLabel)
+    if (evt.payload?.role) details.push(`role ${evt.payload.role}`)
+    if (evt.payload?.target_character_id) details.push(`target #${evt.payload.target_character_id}`)
+    if (evt.payload?.from && evt.payload?.to) details.push(`${evt.payload.from} → ${evt.payload.to}`)
+    else if (evt.payload?.side) details.push(`${evt.payload.side}`)
+    const campaignLabel = evt.payload?.snapshot?.system_name || evt.payload?.campaign_id || evt.campaign_id
+    if (campaignLabel) details.push(`campaign ${campaignLabel}`)
+    return details
+  }
 
   const sessionLabel = lobby.sessionId ? `#${lobby.sessionId}` : 'Session';
   const isOwner = !!character && lobby.owner_id === character.id
@@ -243,10 +334,35 @@ export default function SessionDashboard() {
             aria-label={leftCollapsed ? 'Expand session sidebar' : 'Collapse session sidebar'}
             onClick={() => setLeftCollapsed((v) => !v)}
           />
-          <div className="sidebar-title">Sample Sidebar</div>
+          <div className="sidebar-title">Session Events</div>
         </div>
         <div className="sidebar-body">
-          <div className="muted">Sample body content for the left sidebar.</div>
+          <div className="session-events" aria-live="polite">
+            {eventsLoading && events.length === 0 ? (
+              <div className="muted">Loading events…</div>
+            ) : null}
+            {!eventsLoading && events.length === 0 ? (
+              <div className="muted">No events yet.</div>
+            ) : null}
+            {events.length > 0 ? (
+              <ul className="event-items">
+                {events.map((evt) => {
+                  const details = formatEventDetails(evt)
+                  return (
+                    <li key={evt.id} className="event-item">
+                      <div className="event-title">{formatEventLabel(evt)}</div>
+                      <div className="event-meta">
+                        <span className="mono">{formatEventTime(evt.created_at)}</span>
+                        {details.map((detail) => (
+                          <span key={`${evt.id}-${detail}`} className="event-detail">{detail}</span>
+                        ))}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : null}
+          </div>
         </div>
       </aside>
       <div className="dashboard">

@@ -33,19 +33,22 @@ type Props = {
 export default function Icon({ name, size = 16, className, title, alt = '', style, kind }: Props) {
   const cfg = ICONS[name]
   const useMask = kind ? kind === 'mask' : !!cfg.mask && !cfg.src
+  const baseClass = useMask ? 'icon-mask' : 'icon-img'
+  const classes = className ? `${baseClass} ${className}` : baseClass
   if (useMask && cfg.mask) {
     const spanStyle: React.CSSProperties = {
       display: 'inline-block',
       width: size,
       height: size,
       backgroundColor: 'currentColor',
+      color: 'var(--icon-color, #fff)',
       WebkitMask: `url('${cfg.mask}') no-repeat center / contain`,
       mask: `url('${cfg.mask}') no-repeat center / contain`,
       ...style,
     }
     return (
       <span
-        className={className}
+        className={classes}
         title={title}
         role={alt ? 'img' : undefined}
         aria-label={alt || undefined}
@@ -57,7 +60,7 @@ export default function Icon({ name, size = 16, className, title, alt = '', styl
   return (
     <img
       src={cfg.src}
-      className={className}
+      className={classes}
       width={size}
       height={size}
       title={title}
