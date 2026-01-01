@@ -62,10 +62,14 @@ export default function SovCampaignsTable({
   onUpdatedAgo,
   rowOverlay,
   rowClassName,
+  snapshotOverride,
+  connectedOverride,
 }: {
   onUpdatedAgo?: (s: string) => void;
   rowOverlay?: (row: EnrichedCampaign) => ReactNode;
   rowClassName?: (row: EnrichedCampaign) => string | undefined;
+  snapshotOverride?: Snapshot;
+  connectedOverride?: boolean;
 }) {
   const [snapshot, setSnapshot] = useState<Snapshot>({ timestamp: 0, isStale: false, campaigns: [] });
   const [connected, setConnected] = useState(false);
@@ -78,8 +82,17 @@ export default function SovCampaignsTable({
   const localVersionRef = useRef<number>(0);
   const rowsByIdRef = useRef<Map<number, EnrichedCampaign>>(new Map());
   const pendingCatchupRef = useRef<boolean>(false);
+  const usingOverride = !!snapshotOverride;
+  const liveSnapshot = snapshotOverride ?? snapshot;
+  const isConnected = connectedOverride ?? (usingOverride ? true : connected);
 
   useEffect(() => {
+    intervalRef.current = window.setInterval(() => setNow(Date.now()), 1000);
+    if (usingOverride) {
+      return () => {
+        if (intervalRef.current) window.clearInterval(intervalRef.current);
+      };
+    }
     // Connect shared WS and subscribe to public campaigns
     const off = wsClient.addMessageHandler((msg) => {
       if (msg.type === 'campaigns.snapshot') {
@@ -141,16 +154,15 @@ export default function SovCampaignsTable({
     });
     wsClient.ensure();
     wsClient.subscribe('public.campaigns', { lastVersion: localVersionRef.current });
-    intervalRef.current = window.setInterval(() => setNow(Date.now()), 1000);
     return () => {
       wsClient.unsubscribe('public.campaigns');
       off();
       if (intervalRef.current) window.clearInterval(intervalRef.current);
     };
-  }, []);
+  }, [usingOverride]);
 
   const rows = useMemo(() => {
-    const arr = [...(snapshot?.campaigns ?? [])];
+    const arr = [...(liveSnapshot?.campaigns ?? [])];
     arr.sort((a, b) => {
       let cmp = 0;
       if (sortKey === 'time') {
@@ -165,18 +177,18 @@ export default function SovCampaignsTable({
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return arr;
-  }, [snapshot, sortKey, sortDir]);
+  }, [liveSnapshot, sortKey, sortDir]);
 
   const updatedAgo = (() => {
-    if (!snapshot?.timestamp) return '';
+    if (!liveSnapshot?.timestamp) return '';
     if (!showRelative) {
-      const d = new Date(snapshot.timestamp);
+      const d = new Date(liveSnapshot.timestamp);
       const hh = String(d.getHours()).padStart(2, '0');
       const mm = String(d.getMinutes()).padStart(2, '0');
       const ss = String(d.getSeconds()).padStart(2, '0');
       return `Last change ${hh}:${mm}:${ss}`;
     }
-    const ms = Math.max(now - snapshot.timestamp, 0);
+    const ms = Math.max(now - liveSnapshot.timestamp, 0);
     const s = Math.floor(ms / 1000);
     if (s < 2) return 'Last change just now';
     if (s < 60) return `Last change ${s}s ago`;
@@ -195,7 +207,7 @@ export default function SovCampaignsTable({
     }
   }, [updatedAgo, onUpdatedAgo]);
 
-  if (!connected) {
+  if (!isConnected) {
     const sk = new Array(5).fill(0);
     return (
       <Panel
@@ -252,7 +264,7 @@ export default function SovCampaignsTable({
             >
               {updatedAgo}
             </button>
-            {snapshot.isStale && <Badge variant="warn">STALE</Badge>}
+            {liveSnapshot.isStale && <Badge variant="warn">STALE</Badge>}
           </>
         )}
         role="region"
@@ -279,7 +291,7 @@ export default function SovCampaignsTable({
           >
             {updatedAgo}
           </button>
-          {snapshot.isStale && <Badge variant="warn">STALE</Badge>}
+          {liveSnapshot.isStale && <Badge variant="warn">STALE</Badge>}
         </>
       )}
       role="region"
@@ -372,7 +384,7 @@ export default function SovCampaignsTable({
                       <span className="score-att">{attacker_score}</span>
                       )
                     </div>
-                    <div className={`score-bar${snapshot.isStale ? ' stale' : ''}`}>
+                    <div className={`score-bar${liveSnapshot.isStale ? ' stale' : ''}`}>
                       <div className="fill" style={{ width: `${defPct}%` }} />
                     </div>
                   </div>

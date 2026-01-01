@@ -9,6 +9,7 @@ import RequireAuth from './pages/RequireAuth'
 import SessionsNew from './pages/SessionsNew'
 import SessionDashboard from './pages/SessionDashboard'
 import LoginPage from './pages/LoginPage'
+import UiShowcase from './pages/UiShowcase'
 import { useAuth } from './auth/AuthContext'
 import { useEffect } from 'react'
 import { useSessions } from './sessions/SessionsContext'
@@ -72,6 +73,7 @@ function App() {
           <Route path="/sessions/join" element={<Navigate to="/?join=1" replace />} />
           <Route path="/sessions/:id/dashboard" element={<RequireAuth><SessionDashboard /></RequireAuth>} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/ui" element={<UiShowcase />} />
         </Routes>
       </main>
     </>

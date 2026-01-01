@@ -23,7 +23,7 @@ type Lobby = {
   myRole?: Role
   created_at?: number
   owner_id?: number
-  campaigns?: Array<{ campaign_id: number; side: 'offense' | 'defense' }>
+  campaigns?: Array<{ campaign_id: number; side: 'offense' | 'defense'; locked_adm?: number | null }>
   campaignSnapshots?: Array<{ campaign_id: number; snapshot: any }>
   coordinator_code?: string
   line_code?: string
@@ -51,6 +51,7 @@ type Ctx = {
   leaveSession: () => Promise<void>
   setRole: (character_id: number, role: Role) => Promise<void>
   setMemberRole: (sessionId: number, character_id: number, role: Role) => Promise<void>
+  updateSessionCampaigns: (sessionId: number, changes: { add?: Array<{ campaign_id: number; side: 'offense' | 'defense' }>; remove?: number[] }) => Promise<void>
 }
 
 const SessionsContext = createContext<Ctx | undefined>(undefined)
@@ -90,6 +91,27 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
 
   const membersRef = useRef<Member[]>([])
   useEffect(() => { membersRef.current = lobby.members }, [lobby.members])
+
+  const refreshCampaignData = useCallback(async (sessionId: number) => {
+    if (!accessRef.current) return
+    try {
+      const res = await authedFetch(`${API_BASE_URL}/v1/sessions/${sessionId}`)
+      if (!res.ok) return
+      const json = await res.json()
+      setLobby((l) => {
+        if (l.sessionId !== sessionId) return l
+        return {
+          ...l,
+          campaigns: json.session?.campaigns ?? l.campaigns,
+          campaignSnapshots: json.session?.campaign_snapshots ?? l.campaignSnapshots,
+          coordinator_code: json.coordinator_code ?? l.coordinator_code,
+          line_code: json.line_code ?? l.line_code,
+        }
+      })
+    } catch {
+      // ignore refresh errors
+    }
+  }, [authedFetch])
 
   // Basic message handler for session topics
   useEffect(() => {
@@ -146,6 +168,12 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
         }
       } else if (raw?.type === 'member.role_updated' || raw?.type === 'member.role_changed') {
         setLobby((l) => ({ ...l, members: l.members.map(m => m.character_id === raw.character_id ? { ...m, role: raw.role } : m) }))
+      } else if (raw?.type === 'session.campaigns_updated') {
+        const sid = typeof raw.topic === 'string' ? Number.parseInt(raw.topic.split('.')[1] || '', 10) : undefined
+        if (Array.isArray(raw.campaigns)) {
+          setLobby((l) => (sid && l.sessionId === sid ? { ...l, campaigns: raw.campaigns } : l))
+        }
+        if (sid) void refreshCampaignData(sid)
       } else if (raw?.type === 'session.ended') {
         toast('Session ended', 'warn')
         if (topicRef.current) wsClient.unsubscribe(topicRef.current)
@@ -320,6 +348,25 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [authedFetch, toast])
 
+  const updateSessionCampaigns = useCallback(async (sessionId: number, changes: { add?: Array<{ campaign_id: number; side: 'offense' | 'defense' }>; remove?: number[] }) => {
+    if (!accessRef.current) throw new Error('unauthenticated')
+    const res = await authedFetch(`${API_BASE_URL}/v1/sessions/${sessionId}/campaigns`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes),
+    })
+    if (res.status === 403) throw new Error('forbidden')
+    if (res.status === 410) throw new Error('ended')
+    if (res.status === 404) throw new Error('not_found')
+    if (res.status === 400) throw new Error('invalid_body')
+    if (!res.ok) throw new Error('failed')
+    const json = await res.json()
+    if (json?.campaigns) {
+      setLobby((l) => (l.sessionId === sessionId ? { ...l, campaigns: json.campaigns } : l))
+    }
+    await refreshCampaignData(sessionId)
+  }, [authedFetch, refreshCampaignData])
+
   const value = useMemo<Ctx>(() => ({
     lobby,
     activeSessions,
@@ -336,7 +383,8 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     leaveSession,
     setRole,
     setMemberRole,
-  }), [lobby, activeSessions, activeSessionsLoading, fetchActiveSessions, openLobby, closeLobby, createSession, joinWithCode, rotateCode, kick, kickMember, endSession, leaveSession, setRole, setMemberRole])
+    updateSessionCampaigns,
+  }), [lobby, activeSessions, activeSessionsLoading, fetchActiveSessions, openLobby, closeLobby, createSession, joinWithCode, rotateCode, kick, kickMember, endSession, leaveSession, setRole, setMemberRole, updateSessionCampaigns])
 
   return (
     <SessionsContext.Provider value={value}>{children}</SessionsContext.Provider>

@@ -408,10 +408,10 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 
 /* Modal */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal-panel { width: min(520px, 90vw); border-radius: var(--radius-md); background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow-panel); overflow: hidden; }
+.modal-panel { width: min(520px, 90vw); max-height: 90vh; display: flex; flex-direction: column; border-radius: var(--radius-md); background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow-panel); overflow: hidden; }
 .modal-header { padding: 12px 16px; background: var(--panel-elev); border-bottom: 1px solid var(--border); }
 .modal-title { font-size: 16px; font-weight: 600; }
-.modal-body { padding: 16px; color: var(--text); }
+.modal-body { padding: 16px; color: var(--text); flex: 1 1 auto; overflow: auto; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; background: var(--panel-elev); border-top: 1px solid var(--border); }
 
 /* Modal entrance animation */

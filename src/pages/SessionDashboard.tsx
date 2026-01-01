@@ -12,6 +12,7 @@ import Panel from '../components/ui/Panel'
 import IconButton from '../components/ui/IconButton'
 import ConfirmModal from '../components/ConfirmModal'
 import { useToast } from '../components/ToastProvider'
+import SessionCampaignsModal from '../components/SessionCampaignsModal'
 
 type Snapshot = {
   timestamp: number
@@ -30,6 +31,7 @@ export default function SessionDashboard() {
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
+  const [manageOpen, setManageOpen] = useState(false)
 
   // Open the session WS (presence + metadata)
   useEffect(() => {
@@ -155,6 +157,18 @@ export default function SessionDashboard() {
   }, [completedRows, startMs])
 
   const showSkeletons = useMemo(() => !connected && selectedIds.length > 0 && snapshot.byId.size === 0, [connected, selectedIds.length, snapshot.byId.size])
+  const modalCampaigns = useMemo(() => lobby.campaigns || [], [lobby.campaigns])
+  const availableSnapshot = useMemo(() => {
+    const merged = new Map(snapshot.byId)
+    for (const [id, row] of storedSnapshotById.entries()) {
+      if (!merged.has(id)) merged.set(id, row)
+    }
+    return {
+      timestamp: snapshot.timestamp,
+      isStale: snapshot.isStale,
+      campaigns: Array.from(merged.values()),
+    }
+  }, [snapshot, storedSnapshotById])
 
   const activeCards = useMemo(() => {
     const cards: ReactNode[] = []
@@ -213,8 +227,9 @@ export default function SessionDashboard() {
 
   const sessionLabel = lobby.sessionId ? `#${lobby.sessionId}` : 'Session';
   const isOwner = !!character && lobby.owner_id === character.id
+  const canManageCampaigns = lobby.myRole === 'coordinator' || isOwner
   const canLeave = !!lobby.sessionId && !isOwner
-  const showActions = canLeave || isOwner || hasCompleted
+  const showActions = canLeave || isOwner || hasCompleted || canManageCampaigns
 
   return (
     <div className={`dashboard-shell${leftCollapsed ? ' left-collapsed' : ''}`}>
@@ -249,6 +264,11 @@ export default function SessionDashboard() {
             >
               {showCompleted ? 'Hide completed' : 'Show completed'}
             </button>
+            {canManageCampaigns ? (
+              <button type="button" className="button" onClick={() => setManageOpen(true)}>
+                Manage campaigns
+              </button>
+            ) : null}
             {isOwner ? (
               <button type="button" className="button danger" onClick={() => setConfirmEndOpen(true)}>
                 End session
@@ -336,6 +356,16 @@ export default function SessionDashboard() {
           }
         }}
       />
+      {lobby.sessionId ? (
+        <SessionCampaignsModal
+          open={manageOpen}
+          onClose={() => setManageOpen(false)}
+          sessionId={lobby.sessionId}
+          campaigns={modalCampaigns}
+          snapshot={availableSnapshot}
+          connected={connected}
+        />
+      ) : null}
       </div>
     </div>
   )
