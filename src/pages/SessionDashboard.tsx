@@ -374,7 +374,7 @@ export default function SessionDashboard() {
               type="button"
               className="button"
               aria-pressed={showCompleted}
-              disabled={!hasCampaigns}
+              disabled={!hasCompleted}
               title={!hasCampaigns ? 'No campaigns in this session' : (!hasCompleted ? 'No completed campaigns yet' : undefined)}
               onClick={() => setShowCompleted((prev) => !prev)}
             >

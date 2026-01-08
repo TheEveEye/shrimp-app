@@ -71,6 +71,11 @@ export default function SessionsNew() {
                   className={`action-btn offense`}
                   aria-label="Select Offensive"
                   aria-pressed={picked === 'offense'}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    const row = (e.currentTarget as HTMLElement).closest('tr')
+                    if (row && document.activeElement === row) (row as HTMLElement).blur()
+                  }}
                   onClick={() => setSide(row.campaign_id, 'offense')}
                 >
                   <Icon name="sword" size={20} className="glyph sword" alt="" />
@@ -80,6 +85,11 @@ export default function SessionsNew() {
                   className={`action-btn defense`}
                   aria-label="Select Defensive"
                   aria-pressed={picked === 'defense'}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    const row = (e.currentTarget as HTMLElement).closest('tr')
+                    if (row && document.activeElement === row) (row as HTMLElement).blur()
+                  }}
                   onClick={() => setSide(row.campaign_id, 'defense')}
                 >
                   <Icon name="shield" kind="mask" size={20} className="glyph shield" alt="" />

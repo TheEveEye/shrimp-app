@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, MouseEvent } from 'react';
 import { wsClient } from '../lib/ws';
 import Panel from './ui/Panel';
 import Badge from './ui/Badge';
@@ -337,8 +337,18 @@ export default function SovCampaignsTable({
               ? ATTACKERS_TOTAL + incAbove
               : Math.max(ATTACKERS_TOTAL - incBelow, 0);
             const trClass = rowClassName ? rowClassName(r) : undefined;
+            const onRowMouseDown = (e: MouseEvent<HTMLTableRowElement>) => {
+              if (!rowOverlay) return;
+              const target = e.target as HTMLElement | null;
+              if (target && target.closest('a, button, input, select, textarea, [role="button"], [role="link"]')) return;
+              const rowEl = e.currentTarget;
+              if (document.activeElement === rowEl) {
+                e.preventDefault();
+                rowEl.blur();
+              }
+            };
             return (
-              <tr key={r.campaign_id} tabIndex={0} className={trClass}>
+              <tr key={r.campaign_id} tabIndex={0} className={trClass} onMouseDown={onRowMouseDown}>
                 <td>
                   <a className="name-link" href={`https://evemaps.dotlan.net/map/${toUnderscores(reg)}/${toUnderscores(sys)}`} target="_blank" rel="noreferrer">{sys}</a>
                 </td>

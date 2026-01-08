@@ -328,7 +328,7 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 .icon-button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-weak); }
 .icon-button--plain { width: auto; height: auto; background: none; border: 0; box-shadow: none; }
 .icon-button--plain:hover { box-shadow: none; }
-.icon-button--danger { color: var(--danger); }
+.icon-button--danger { color: var(--danger); --icon-color: var(--danger); }
 .icon-button:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; transform: none; }
 /* Close button on campaign bar */
 .camp-close { position: absolute; z-index: 3; top: 6px; right: 8px; }

@@ -72,7 +72,7 @@ export default function SessionCampaignsModal({ open, onClose, sessionId, campai
   const hasChanges = add.length > 0 || remove.length > 0
 
   const onSave = async () => {
-    if (!hasChanges || saving) return
+    if (!hasChanges || saving || counts.total === 0) return
     setSaving(true)
     try {
       await updateSessionCampaigns(sessionId, {
@@ -121,6 +121,11 @@ export default function SessionCampaignsModal({ open, onClose, sessionId, campai
                   className="action-btn offense"
                   aria-label="Select Offensive"
                   aria-pressed={picked === 'offense'}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    const row = (e.currentTarget as HTMLElement).closest('tr')
+                    if (row && document.activeElement === row) (row as HTMLElement).blur()
+                  }}
                   onClick={() => setSide(row.campaign_id, 'offense')}
                 >
                   <Icon name="sword" size={20} className="glyph sword" alt="" />
@@ -130,6 +135,11 @@ export default function SessionCampaignsModal({ open, onClose, sessionId, campai
                   className="action-btn defense"
                   aria-label="Select Defensive"
                   aria-pressed={picked === 'defense'}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    const row = (e.currentTarget as HTMLElement).closest('tr')
+                    if (row && document.activeElement === row) (row as HTMLElement).blur()
+                  }}
                   onClick={() => setSide(row.campaign_id, 'defense')}
                 >
                   <Icon name="shield" kind="mask" size={20} className="glyph shield" alt="" />
@@ -141,7 +151,13 @@ export default function SessionCampaignsModal({ open, onClose, sessionId, campai
       </div>
       <div className="modal-actions">
         <button type="button" className="button" onClick={onClose}>Cancel</button>
-        <button type="button" className="button primary" disabled={!hasChanges || saving} onClick={() => void onSave()}>
+        <button
+          type="button"
+          className="button primary"
+          disabled={!hasChanges || saving || counts.total === 0}
+          title={counts.total === 0 ? 'Select at least one campaign' : undefined}
+          onClick={() => void onSave()}
+        >
           {saving ? 'Saving...' : 'Save changes'}
         </button>
       </div>
