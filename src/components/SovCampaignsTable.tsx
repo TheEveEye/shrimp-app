@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode, MouseEvent } from 'react';
+import type { ReactNode, MouseEvent, CSSProperties } from 'react';
 import { wsClient } from '../lib/ws';
 import Panel from './ui/Panel';
 import Badge from './ui/Badge';
@@ -226,7 +226,7 @@ export default function SovCampaignsTable({
               <th scope="col" className="col-adm">ADM</th>
               <th scope="col">Time</th>
               <th scope="col">Relative</th>
-              <th scope="col">Score</th>
+              <th scope="col" className="col-score">Score</th>
             </tr>
           </thead>
           <tbody>
@@ -239,7 +239,7 @@ export default function SovCampaignsTable({
                 <td className="col-adm"><div className="skeleton" style={{ height: 22, width: 86, borderRadius: 9999 }} /></td>
                 <td><div className="skeleton" style={{ height: 14, width: 160 }} /></td>
                 <td><div className="skeleton" style={{ height: 22, width: 120, borderRadius: 9999 }} /></td>
-                <td><div className="skeleton" style={{ height: 14, width: 120 }} /></td>
+                <td className="col-score"><div className="skeleton" style={{ height: 14, width: 120 }} /></td>
               </tr>
             ))}
           </tbody>
@@ -307,7 +307,7 @@ export default function SovCampaignsTable({
             <th scope="col" className="col-adm" role="button" tabIndex={0} onClick={() => { setSortKey('adm'); setSortDir(sortKey==='adm' && sortDir==='asc' ? 'desc' : 'asc'); }} aria-sort={sortKey==='adm'? (sortDir==='asc'?'ascending':'descending') : 'none'} title="Sort by ADM">ADM {sortKey==='adm' ? (sortDir==='asc'?'▲':'▼') : ''}</th>
             <th scope="col" role="button" tabIndex={0} onClick={() => { setSortKey('time'); setSortDir(sortKey==='time' && sortDir==='asc' ? 'desc' : 'asc'); }} aria-sort={sortKey==='time'? (sortDir==='asc'?'ascending':'descending') : 'none'} title="Sort by Time">Time {sortKey==='time' ? (sortDir==='asc'?'▲':'▼') : ''}</th>
             <th scope="col">Relative</th>
-            <th scope="col">Score</th>
+            <th scope="col" className="col-score">Score</th>
           </tr>
         </thead>
         <tbody>
@@ -336,7 +336,12 @@ export default function SovCampaignsTable({
             const defnder_score = defPct >= 60
               ? ATTACKERS_TOTAL + incAbove
               : Math.max(ATTACKERS_TOTAL - incBelow, 0);
-            const trClass = rowClassName ? rowClassName(r) : undefined;
+            const baseClass = rowClassName ? rowClassName(r) : undefined;
+            const startedClass = isLive ? 'row-started' : undefined;
+            const trClass = [baseClass, startedClass].filter(Boolean).join(' ') || undefined;
+            const trStyle: CSSProperties | undefined = isLive
+              ? ({ '--score-def-pct': `${defPct}%` } as CSSProperties)
+              : undefined;
             const onRowMouseDown = (e: MouseEvent<HTMLTableRowElement>) => {
               if (!rowOverlay) return;
               const target = e.target as HTMLElement | null;
@@ -348,7 +353,7 @@ export default function SovCampaignsTable({
               }
             };
             return (
-              <tr key={r.campaign_id} tabIndex={0} className={trClass} onMouseDown={onRowMouseDown}>
+              <tr key={r.campaign_id} tabIndex={0} className={trClass} style={trStyle} onMouseDown={onRowMouseDown}>
                 <td>
                   <a className="name-link" href={`https://evemaps.dotlan.net/map/${toUnderscores(reg)}/${toUnderscores(sys)}`} target="_blank" rel="noreferrer">{sys}</a>
                 </td>
@@ -385,9 +390,9 @@ export default function SovCampaignsTable({
                 <td>
                   <span className={etaPillClass}>{eta}</span>
                 </td>
-                <td>
+                <td className="col-score">
                   <div className="score-wrap">
-                    <div className="mono">
+                    <div className="score-line mono">
                       {defPct}% (
                       <span className="score-def">{defnder_score}</span>
                       /

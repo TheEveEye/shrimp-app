@@ -25,6 +25,8 @@
   --row-tint-red-border: rgba(231, 76, 60, 0.25);
   --row-tint-blue: rgba(39, 229, 255, 0.14);
   --row-tint-blue-border: rgba(39, 229, 255, 0.3);
+  --score-bg-blue: rgba(39, 229, 255, 0.08);
+  --score-bg-red: rgba(231, 76, 60, 0.08);
   /* Accents */
   --crown-yellow: #F5C518;
 }
@@ -53,6 +55,8 @@
   --row-tint-red-border: rgba(231, 76, 60, 0.22);
   --row-tint-blue: rgba(39, 119, 255, 0.10);
   --row-tint-blue-border: rgba(39, 119, 255, 0.22);
+  --score-bg-blue: rgba(0, 119, 255, 0.08);
+  --score-bg-red: rgba(178, 44, 35, 0.08);
   --crown-yellow: #F5C518;
 }
 
@@ -140,6 +144,17 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 .sov-table tbody tr:hover { background: rgba(255,255,255,0.03); }
 .sov-table tbody tr:last-child td { border-bottom: 0; }
 .sov-table tbody tr:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-weak) inset; }
+.sov-table tbody tr.row-started {
+  background-image: linear-gradient(
+    90deg,
+    var(--score-bg-blue) 0%,
+    var(--score-bg-blue) var(--score-def-pct, 50%),
+    var(--score-bg-red) var(--score-def-pct, 50%),
+    var(--score-bg-red) 100%
+  );
+}
+.sov-table thead th:nth-child(-n+3),
+.sov-table tbody td:nth-child(-n+3) { white-space: nowrap; }
 
 /* New Sessions table interactions */
 .sov-table tbody tr.row-selected.offense { background: var(--row-tint-red); box-shadow: inset 0 0 0 1px var(--row-tint-red-border); }
@@ -180,6 +195,7 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 @media (prefers-reduced-motion: reduce) { .eta-pill.warn.pulse { animation: none; } }
 
 .score-wrap { display: flex; flex-direction: column; gap: 6px; }
+.score-wrap .score-line { white-space: nowrap; }
 .score-bar { position: relative; height: 3px; background: var(--danger); border-radius: 999px; overflow: hidden; }
 .score-bar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); }
 .score-bar.stale { opacity: 0.6; }
@@ -215,6 +231,7 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 /* ADM display */
 .adm-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--chip-bg); }
 .sov-table thead th.col-adm, .sov-table tbody td.col-adm { white-space: nowrap; }
+.sov-table thead th.col-score, .sov-table tbody td.col-score { white-space: nowrap; }
 @media (max-width: 900px) {
   .sov-table thead th.col-adm, .sov-table tbody td.col-adm { display: none; }
 }
