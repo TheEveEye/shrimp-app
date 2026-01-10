@@ -26,15 +26,15 @@ export default function ToastersPanel({ sessionId }: { sessionId: number }) {
       <Panel
         title="Toasters"
         controls={<button className="button" onClick={() => setOpen(true)}>Add Toaster</button>}
-        style={{ marginTop: 16 }}
+        className="toasters-panel"
         bodyStyle={{ padding: 16 }}
       >
         {items.length === 0 && !loading ? (
           <div className="muted">No toasters yet.</div>
         ) : null}
-        <div className="grid" style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+        <div className="toasters-row">
           {items.map((t) => (
-            <div key={t.character_id} className="panel" style={{ padding: 12, position: 'relative', borderRadius: 12 }} aria-label={`Toaster: ${t.name || t.character_id}, ${t.ship_type_name || '—'}, ${t.entosis_tier.toUpperCase()}`}>
+            <div key={t.character_id} className="panel toaster-card" aria-label={`Toaster: ${t.name || t.character_id}, ${t.ship_type_name || '—'}, ${t.entosis_tier.toUpperCase()}`}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <CharacterAvatar

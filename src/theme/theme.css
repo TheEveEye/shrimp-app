@@ -112,7 +112,7 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 .panel-body { padding: 0; overflow: hidden; }
 
 /* Buttons */
-.button { display: inline-flex; align-items: center; justify-content: center; height: 32px; border-radius: 999px; padding: 0 12px; border: 1px solid var(--border); background: var(--chip-bg); color: inherit; cursor: pointer; text-decoration: none; transition: transform 140ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease, color 180ms ease; }
+.button { display: inline-flex; align-items: center; justify-content: center; height: 32px; border-radius: 999px; padding: 0 12px; border: 1px solid var(--border); background: var(--chip-bg); color: inherit; cursor: pointer; text-decoration: none; -webkit-appearance: none; appearance: none; transition: transform 140ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease, color 180ms ease; }
 .button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: inset 0 0 0 1px var(--border), 0 8px 18px rgba(0, 0, 0, 0.22); border-color: var(--chip-border); }
 .button:active:not(:disabled) { transform: translateY(0); box-shadow: inset 0 0 0 1px var(--border); }
 .button.primary { background: var(--accent); border-color: var(--accent); color: #001018; font-weight: 600; }
@@ -337,9 +337,9 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 }
 .stale-badge { height: 20px; font-size: 12px; margin-left: 8px; padding: 0 8px; background: var(--warning-weak); border-color: var(--warning); color: var(--warning); }
 /* Icon-only buttons */
-.icon-button { width: 28px; height: 28px; border-radius: 999px; border: 1px solid var(--border); background: var(--chip-bg); color: inherit; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; line-height: 0; transition: transform 140ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease, color 180ms ease; }
+.icon-button { width: 28px; height: 28px; border-radius: 999px; border: 1px solid var(--border); background: var(--chip-bg); color: inherit; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; line-height: 0; overflow: visible; -webkit-appearance: none; appearance: none; transition: transform 140ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease, color 180ms ease; }
 .icon-button > img,
-.icon-button > span { display: block; }
+.icon-button > span { display: block; overflow: visible; }
 .icon-button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: inset 0 0 0 1px var(--border), 0 8px 18px rgba(0, 0, 0, 0.22); border-color: var(--chip-border); }
 .icon-button:active:not(:disabled) { transform: translateY(0); box-shadow: inset 0 0 0 1px var(--border); }
 .icon-button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-weak); }
@@ -352,7 +352,7 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 
 /* Dashboard two-column layout */
 .dashboard-shell { position: relative; width: 100%; margin-left: 0; padding-left: 0; padding-right: 0; }
-.dashboard { min-width: 0; width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.dashboard { min-width: 0; width: 100%; max-width: 1200px; margin: 0 auto; padding: 0; }
 .dashboard-grid { display: block; }
 .dashboard-main { min-width: 0; }
 .dashboard-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
@@ -367,6 +367,10 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
 .session-left-sidebar.collapsed .sidebar-title { display: none; }
 .session-left-sidebar.collapsed .sidebar-body { display: none; }
 
+.toasters-panel { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); width: min(calc(100% - 48px), 1152px); z-index: 11; margin: 0; box-shadow: var(--shadow-panel); }
+.toasters-row { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 6px; }
+.toaster-card { padding: 12px; position: relative; border-radius: 12px; flex: 0 0 260px; }
+
 .session-events { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
 .event-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .event-item { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--panel-elev); }
@@ -379,6 +383,7 @@ a.name-link:hover, a.name-link:focus-visible { text-decoration: underline; text-
   .dashboard { width: 100%; }
   .session-left-sidebar { position: static; width: 100%; max-height: none; margin-bottom: 16px; }
   .session-left-sidebar.collapsed { width: 100%; }
+  .toasters-panel { position: static; left: auto; bottom: auto; transform: none; width: 100%; margin-top: 16px; }
 }
 
 /* Members sidebar */

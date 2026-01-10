@@ -98,7 +98,7 @@ export default function SessionCampaignsModal({ open, onClose, sessionId, campai
       titleId="manage-campaigns-title"
       title="Manage campaigns"
       panelClassName="modal-animate-in"
-      panelStyle={{ maxWidth: 1100, width: 'min(1100px, 92vw)' }}
+      panelStyle={{ maxWidth: 1280, width: 'min(1280px, calc(100vw - 64px))' }}
     >
       <div className="modal-body">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
